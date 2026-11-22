@@ -1,0 +1,1544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACSEF 2027 Tracker</title>
+<style>
+:root{
+  --bg:#f4f6fb; --surface:#ffffff; --surface-2:#eef1f7; --text:#1b2333; --muted:#5b6880;
+  --border:#d8dfea; --border-strong:#a9b5c9;
+  --accent:#2b67d6; --accent-soft:#e2ebfc; --accent-text:#ffffff;
+  --done:#1d9152; --done-soft:#def3e7;
+  --prog:#2b67d6; --prog-soft:#e2ebfc;
+  --blocked:#b86e00; --blocked-soft:#fdefd3;
+  --todo:#66738a; --todo-soft:#eceff4;
+  --over:#d42f2f; --over-soft:#fde7e7;
+  --warn:#9a6200; --warn-soft:#fff4dc;
+  --radius:14px;
+  --shadow:0 1px 2px rgba(20,30,50,.06),0 3px 10px rgba(20,30,50,.05);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#11151d; --surface:#1a202c; --surface-2:#232a39; --text:#e6ebf4; --muted:#9aa6bb;
+    --border:#2e384b; --border-strong:#4b5870;
+    --accent:#6d9dff; --accent-soft:#1e2b48; --accent-text:#0d1220;
+    --done:#43c37f; --done-soft:#16301f;
+    --prog:#6d9dff; --prog-soft:#1e2b48;
+    --blocked:#f0a83c; --blocked-soft:#382a12;
+    --todo:#9aa6bb; --todo-soft:#252d3c;
+    --over:#ff6b6b; --over-soft:#3a1c21;
+    --warn:#f0b54f; --warn-soft:#352a13;
+    --shadow:none;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- Top bar ---------- */
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:var(--shadow)}
+.topbar-inner{max-width:1120px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 260px}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--accent);display:grid;place-items:center;flex:none}
+.logo svg{width:22px;height:22px}
+.brand h1{font-size:1.1rem;margin:0;line-height:1.2}
+.brand p{margin:0;font-size:.82rem;color:var(--muted)}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+.nav{max-width:1120px;margin:0 auto;padding:0 16px 8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{flex:none;text-decoration:none;color:var(--muted);font-weight:600;font-size:.88rem;padding:6px 12px;border-radius:99px;background:var(--surface-2)}
+.nav a:hover{color:var(--text)}
+
+.btn{border:1px solid var(--border);background:var(--surface);padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:.9rem;display:inline-flex;align-items:center;gap:6px;min-height:40px}
+.btn:hover{border-color:var(--border-strong)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.btn.small{min-height:34px;padding:5px 11px;font-size:.85rem}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--over)}
+.btn.danger:hover{border-color:var(--over)}
+.btn:focus-visible,.nav a:focus-visible,.task-title:focus-visible,.phase-head:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* ---------- Sync button & dialog ---------- */
+.sync-btn .dot{width:10px;height:10px;border-radius:50%;background:var(--todo);flex:none}
+.sync-btn[data-s="idle"] .dot{background:var(--done)}
+.sync-btn[data-s="saving"] .dot{background:var(--prog);animation:pulse 1s ease-in-out infinite}
+.sync-btn[data-s="offline"] .dot{background:var(--blocked)}
+.sync-btn[data-s="error"] .dot{background:var(--over)}
+.sync-btn[data-s="error"]{border-color:var(--over)}
+@keyframes pulse{50%{opacity:.3}}
+dialog.sync{border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text);padding:0;width:min(520px,calc(100vw - 32px));box-shadow:0 12px 40px rgba(0,0,0,.25)}
+dialog.sync::backdrop{background:rgba(10,15,25,.55)}
+.dlg-body{padding:18px;display:grid;gap:12px;margin:0}
+.dlg-body h2{margin:0;font-size:1.2rem}
+.dlg-body p{margin:0;font-size:.9rem}
+.dlg-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dlg-actions .grow{flex:1}
+.dlg-msg{font-size:.9rem;padding:9px 11px;border-radius:9px;background:var(--surface-2)}
+.dlg-msg.err{background:var(--over-soft);color:var(--over)}
+.dlg-msg.ok{background:var(--done-soft);color:var(--done)}
+.dlg-msg[hidden]{display:none}
+
+main{max-width:1120px;margin:0 auto;padding:16px 16px 60px}
+section{scroll-margin-top:120px;margin-bottom:28px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.section-head h2{margin:0;font-size:1.3rem}
+.section-head p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.card h3{margin:0 0 10px;font-size:1rem}
+
+.banner{border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:.92rem;border:1px solid}
+.banner.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--text)}
+.banner.bad{background:var(--over-soft);border-color:var(--over)}
+.banner[hidden]{display:none}
+
+/* ---------- Dashboard ---------- */
+.dash{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:14px}
+.countdown{display:flex;flex-direction:column;gap:6px}
+.countdown .label{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--muted)}
+.big{display:flex;align-items:baseline;gap:10px}
+.big .num{font-size:4rem;font-weight:800;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.big .unit{font-size:1.1rem;font-weight:700;color:var(--muted)}
+.countdown.soon .num{color:var(--blocked)}
+.countdown.urgent .num{color:var(--over)}
+.countdown .what{font-size:1.05rem;font-weight:700}
+.countdown .when{color:var(--muted);font-size:.92rem}
+.countdown .also{margin-top:8px;padding-top:10px;border-top:1px dashed var(--border);font-size:.9rem;color:var(--muted)}
+.countdown .also b{color:var(--text)}
+
+.overall-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.overall-top .pct{font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums}
+.bar{height:12px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--done);border-radius:99px;transition:width .35s ease}
+.bar.thin{height:8px}
+.muted{color:var(--muted)}
+.phase-bars{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.phase-bars li{display:grid;grid-template-columns:minmax(0,11rem) minmax(0,1fr) 3.2rem;align-items:center;gap:10px;font-size:.86rem}
+.phase-bars li span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phase-bars li span:last-child{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.dlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.dlist button{width:100%;text-align:left;border:1px solid var(--border);background:var(--surface-2);border-radius:10px;padding:8px 10px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px}
+.dlist button:hover{border-color:var(--border-strong)}
+.dlist .t{font-weight:600}
+.dlist .m{font-size:.8rem;color:var(--muted)}
+.dlist .d{font-size:.82rem;font-weight:700;white-space:nowrap;grid-row:span 2;align-self:center}
+.card.overdue-card{border-color:var(--over)}
+.card.overdue-card h3{color:var(--over)}
+.overdue-card .dlist button{background:var(--over-soft);border-color:transparent}
+.overdue-card .dlist .d{color:var(--over)}
+.empty-note{color:var(--muted);font-size:.9rem;margin:0}
+.count-badge{display:inline-block;min-width:1.6em;padding:0 .45em;border-radius:99px;background:var(--surface-2);font-size:.8rem;text-align:center;margin-left:6px;color:var(--muted)}
+
+/* ---------- Rules ---------- */
+details.rules{background:var(--warn-soft);border:1px solid var(--warn);border-radius:var(--radius);padding:0}
+details.rules summary{cursor:pointer;padding:12px 16px;font-weight:700;list-style:none;display:flex;align-items:center;gap:10px}
+details.rules summary::-webkit-details-marker{display:none}
+details.rules summary::before{content:"";width:9px;height:9px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;transform:rotate(-45deg);transition:transform .2s;flex:none}
+details.rules[open] summary::before{transform:rotate(45deg)}
+details.rules ul{margin:0;padding:0 16px 14px 40px;display:grid;gap:5px}
+details.rules li b{font-weight:700}
+
+/* ---------- Filters & phases ---------- */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:3px;font-size:.8rem;font-weight:600;color:var(--muted)}
+.field select,.field input[type=text],.field input[type=url],.field input[type=password],.field input[type=date],.field input[type=time],.field input[type=number],.field textarea{
+  font-size:.95rem;font-weight:400;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 9px;min-height:40px}
+.field textarea{resize:vertical;min-height:64px}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:.9rem;min-height:40px;cursor:pointer;color:var(--text)}
+.toggle input{width:20px;height:20px;accent-color:var(--accent)}
+.filters .spacer{flex:1}
+
+.phase{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+.phase-head{width:100%;border:0;background:transparent;cursor:pointer;text-align:left;padding:14px 16px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center}
+.phase-head .chev{width:10px;height:10px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg);transition:transform .2s;margin:0 4px}
+.phase.collapsed .phase-head .chev{transform:rotate(-45deg)}
+.phase-head .name{font-weight:700;font-size:1.02rem}
+.phase-head .range{font-size:.82rem;color:var(--muted);font-weight:500;margin-left:6px}
+.phase-head .cnt{font-weight:700;font-size:.9rem;font-variant-numeric:tabular-nums}
+.phase-head .bar{grid-column:2 / 4}
+.phase.complete .phase-head .cnt{color:var(--done)}
+.phase-body{border-top:1px solid var(--border);padding:8px 10px 12px}
+.phase.collapsed .phase-body{display:none}
+.tasks{list-style:none;margin:0;padding:0}
+.phase-foot{padding:6px 6px 0}
+.nomatch{color:var(--muted);font-size:.9rem;padding:8px}
+
+.task{border-radius:11px;margin:4px 0;border:1px solid transparent;scroll-margin-top:130px}
+.task:hover{background:var(--surface-2)}
+.task.open{border-color:var(--border);background:var(--surface-2)}
+.task.overdue{background:var(--over-soft);border-color:var(--over)}
+.task.flash{animation:flash 1.4s ease}
+@keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+.task-main{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:8px;align-items:start}
+.task-title{border:0;background:transparent;padding:2px 0;cursor:pointer;text-align:left;display:block;width:100%;border-radius:6px}
+.task-title .tt{font-weight:600;display:block}
+.task-title .td{font-size:.86rem;color:var(--muted);display:block}
+.chips{grid-column:2;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--surface-2);color:var(--muted);border:1px solid var(--border);white-space:nowrap}
+.chip.o-Captain{background:#e6f0ff;color:#1d4fa8;border-color:#c5d8fb}
+.chip.o-Teammate{background:#f2e8ff;color:#6b2fb3;border-color:#dcc8f7}
+.chip.o-Both{background:#e3f6f3;color:#156b5e;border-color:#bfe6df}
+.chip.o-Parent{background:#fff0e0;color:#94530a;border-color:#f5d6b1}
+@media (prefers-color-scheme: dark){
+  .chip.o-Captain{background:#1d2b4a;color:#a9c6ff;border-color:#2d4170}
+  .chip.o-Teammate{background:#2b1f42;color:#d2b6ff;border-color:#43306a}
+  .chip.o-Both{background:#16332e;color:#8fe0d2;border-color:#24524a}
+  .chip.o-Parent{background:#38280f;color:#f6c88c;border-color:#5a4119}
+}
+.chip.due-over{background:var(--over);color:#fff;border-color:var(--over)}
+.chip.donedate{background:var(--done-soft);color:var(--done);border-color:transparent}
+.pill{font-size:.76rem;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.s-todo{background:var(--todo-soft);color:var(--todo)}
+.s-prog{background:var(--prog-soft);color:var(--prog)}
+.s-done{background:var(--done-soft);color:var(--done)}
+.s-blocked{background:var(--blocked-soft);color:var(--blocked)}
+.task.is-done .task-main{opacity:.55}
+.task.is-done .tt{text-decoration:line-through;text-decoration-thickness:1.5px}
+.task.is-done.open .task-main{opacity:.8}
+
+.check{position:relative;display:inline-flex;width:32px;height:32px;flex:none;cursor:pointer;grid-row:span 2}
+.check input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.check span{width:32px;height:32px;border:2.5px solid var(--border-strong);border-radius:9px;background:var(--surface);display:grid;place-items:center;transition:background .15s,border-color .15s}
+.check input:checked+span{background:var(--done);border-color:var(--done)}
+.check input:checked+span::after{content:"";width:8px;height:16px;border:solid #fff;border-width:0 3.5px 3.5px 0;transform:translateY(-2px) rotate(45deg)}
+.check input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.task.overdue .check span{border-color:var(--over)}
+
+.task-edit{padding:4px 10px 12px 52px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.task-edit .full{grid-column:1 / -1}
+.task-edit .half{grid-column:span 2}
+.task-edit .row-end{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+
+/* ---------- Timeline ---------- */
+.timeline{list-style:none;margin:0;padding:4px 0 0;position:relative}
+.timeline::before{content:"";position:absolute;left:11px;top:10px;bottom:10px;width:3px;background:var(--border);border-radius:3px}
+.timeline li{position:relative;padding:0 0 18px 40px}
+.timeline li:last-child{padding-bottom:0}
+.timeline .dot{position:absolute;left:3px;top:3px;width:19px;height:19px;border-radius:50%;background:var(--surface);border:3px solid var(--accent)}
+.timeline li.past .dot{background:var(--border-strong);border-color:var(--border-strong)}
+.timeline li.past .dot::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid var(--surface);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.timeline li.next .dot{background:var(--accent);box-shadow:0 0 0 5px var(--accent-soft)}
+.timeline .tl-date{font-weight:700;font-size:.9rem}
+.timeline .tl-title{font-size:1rem}
+.timeline .tl-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:3px}
+.timeline li.past .tl-title,.timeline li.past .tl-date{color:var(--muted)}
+.timeline li.past .tl-title{text-decoration:line-through}
+.timeline li.next .tl-title{font-weight:700}
+.k-deadline{background:var(--over-soft);color:var(--over)}
+.k-fair{background:var(--accent-soft);color:var(--accent)}
+.k-team{background:var(--done-soft);color:var(--done)}
+.k-info{background:var(--surface-2);color:var(--muted)}
+
+/* ---------- Log tables ---------- */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}
+table.log{width:100%;border-collapse:collapse;font-size:.9rem}
+table.log th{text-align:left;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--surface-2);padding:9px 8px;white-space:nowrap}
+table.log td{padding:6px 5px;border-top:1px solid var(--border);vertical-align:top}
+table.log input[type=text],table.log input[type=date],table.log input[type=time],table.log input[type=number],table.log select,table.log textarea{
+  width:100%;min-width:0;border:1px solid transparent;background:transparent;border-radius:7px;padding:6px 7px;font-size:.9rem;min-height:36px}
+table.log input:hover,table.log select:hover,table.log textarea:hover{border-color:var(--border)}
+table.log input:focus,table.log select:focus,table.log textarea:focus{border-color:var(--accent);outline:none;background:var(--surface)}
+table.log textarea{resize:vertical;min-height:36px;min-width:140px}
+table.log input[type=checkbox]{width:24px;height:24px;accent-color:var(--done);margin:6px}
+table.log td.ctr{text-align:center}
+table.log td.money{white-space:nowrap;padding-top:13px;font-variant-numeric:tabular-nums;font-weight:600}
+table.log td.act{width:1%;white-space:nowrap}
+table.log tr.empty td{color:var(--muted);text-align:center;padding:18px}
+table.log tfoot td{background:var(--surface-2);font-weight:700;padding:10px 8px}
+.log-ai textarea{min-width:180px}
+.log-ai td:nth-child(1){min-width:140px}
+.log-exp td:nth-child(1){min-width:140px}
+.log-exp td:nth-child(5){min-width:80px}
+.log-parts td:nth-child(1){min-width:200px}
+.log-parts td:nth-child(2){width:80px}
+.log-parts td:nth-child(3){width:110px}
+.del{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:8px;border-radius:8px;font-size:.85rem;font-weight:600}
+.del:hover{color:var(--over);background:var(--over-soft)}
+.totals{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-end}
+
+footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);font-size:.85rem}
+
+/* ---------- Responsive ---------- */
+@media (max-width:860px){
+  .dash{grid-template-columns:minmax(0,1fr)}
+  .task-edit{padding-left:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .task-edit .half{grid-column:1 / -1}
+}
+@media (max-width:760px){
+  .table-wrap{border:0;background:transparent;box-shadow:none;overflow:visible}
+  table.log,table.log tbody,table.log tfoot,table.log tr,table.log td{display:block;width:100%}
+  table.log thead{display:none}
+  table.log tbody tr{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin-bottom:10px;box-shadow:var(--shadow)}
+  table.log td{border:0;padding:3px 0;width:100% !important}
+  table.log td[data-label]::before{content:attr(data-label);display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:2px 0 1px}
+  table.log input[type=text],table.log input[type=date],table.log input[type=time],table.log input[type=number],table.log select,table.log textarea{border-color:var(--border)}
+  table.log td.ctr{text-align:left}
+  table.log td.money{padding-top:3px}
+  table.log td.act{text-align:right}
+  table.log tr.empty{border-style:dashed}
+  table.log tfoot tr{border-radius:12px;overflow:hidden}
+  .log-ai textarea,table.log textarea{min-width:0}
+  .phase-bars li{grid-template-columns:minmax(0,8rem) minmax(0,1fr) 3rem}
+}
+@media (max-width:520px){
+  .big .num{font-size:3.2rem}
+  .topbar-inner{flex-wrap:nowrap;padding:8px 16px;gap:8px}
+  .brand{flex:1 1 auto}
+  .brand p{display:none}
+  .brand h1{font-size:.98rem}
+  .logo{width:30px;height:30px}
+  .top-actions{flex:none;gap:6px}
+  .top-actions .btn{min-height:36px;padding:5px 10px;font-size:.82rem}
+  .top-actions .lbl{display:none}
+  section{scroll-margin-top:100px}
+  .phase-head .range{display:block;margin-left:0}
+  .task-edit{grid-template-columns:minmax(0,1fr)}
+}
+@media print{
+  .topbar,.top-actions,.filters,.phase-foot,.del,.btn{display:none !important}
+  .phase.collapsed .phase-body{display:block}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/><path d="M11.5 9v8"/></svg>
+      </div>
+      <div>
+        <h1>ACSEF 2027 Project Tracker</h1>
+        <p>Home Heat-Loss Detector · Middle school · Regular project</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn sync-btn" id="btnSync" type="button" data-s="off" title="Team sync settings"><span class="dot" aria-hidden="true"></span><span id="syncText">Sync off</span></button>
+      <button class="btn" id="btnExport" type="button" title="Download all data as a JSON backup file" aria-label="Export">⬇<span class="lbl"> Export</span></button>
+      <button class="btn" id="btnImport" type="button" title="Load a JSON backup file" aria-label="Import">⬆<span class="lbl"> Import</span></button>
+      <input type="file" id="fileImport" accept=".json,application/json" hidden>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Sections">
+    <a href="#dashboard">Dashboard</a>
+    <a href="#tasks">Tasks</a>
+    <a href="#timeline">Key dates</a>
+    <a href="#ai-log">AI Use Log</a>
+    <a href="#experiments">Experiment Log</a>
+    <a href="#parts">Parts</a>
+  </nav>
+</header>
+
+<main>
+  <div class="banner bad" id="storageBanner" hidden>This browser is not letting the tracker save. Your changes will be lost when you close the page, so use <b>Export</b> to keep a backup.</div>
+  <div class="banner warn" id="debugBanner" hidden></div>
+  <div id="alerts"></div>
+
+  <section id="dashboard" aria-label="Dashboard">
+    <div class="dash">
+      <div class="card countdown" id="countdown"></div>
+      <div class="card" id="overall"></div>
+      <div class="card" id="dueWeek"></div>
+      <div class="card overdue-card" id="overdue"></div>
+    </div>
+  </section>
+
+  <section id="rules-section" aria-label="Rules reminder">
+    <details class="rules" id="rules">
+      <summary>Fair rules reminder — read before every work session</summary>
+      <ul>
+        <li><b>Low voltage only</b> (3×AA battery packs).</li>
+        <li><b>Nothing wired</b> to the furnace, AC or household power.</li>
+        <li><b>No testing on people</b> — temperature targets only.</li>
+        <li><b>No heaters, motors, chemicals or lasers.</b></li>
+        <li>Say <b>"detect"</b>, never "diagnose".</li>
+        <li>Students write the <b>Research Plan, abstract, poster and notebook in their own words</b>.</li>
+        <li>Any <b>AI use must be logged</b> with date, prompt and purpose, and cited (use the AI Use Log below).</li>
+        <li><b>No Research Plan changes on or after Feb 1, 2027.</b></li>
+        <li>Adults (Parent) help with safety-related tasks only.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section id="tasks" aria-label="Phases and tasks">
+    <div class="section-head">
+      <div>
+        <h2>Phases and tasks</h2>
+        <p>Tick the box when a task is done. Click a task to edit it or add notes.</p>
+      </div>
+    </div>
+    <div class="filters">
+      <label class="field">Owner
+        <select id="fOwner">
+          <option value="all">Everyone</option>
+          <option value="Captain">Captain (+ Both)</option>
+          <option value="Teammate">Teammate (+ Both)</option>
+          <option value="Both">Both only</option>
+          <option value="Parent">Parent</option>
+        </select>
+      </label>
+      <label class="field">Status
+        <select id="fStatus">
+          <option value="all">Any status</option>
+          <option>Not started</option>
+          <option>In progress</option>
+          <option>Done</option>
+          <option>Blocked</option>
+        </select>
+      </label>
+      <label class="toggle"><input type="checkbox" id="fOpen"> Show only open tasks</label>
+      <span class="spacer"></span>
+      <button class="btn small ghost" type="button" id="btnExpandAll">Open all phases</button>
+      <button class="btn small ghost" type="button" id="btnCollapseAll">Close all phases</button>
+    </div>
+    <div id="phases"></div>
+  </section>
+
+  <section id="timeline" aria-label="Key dates">
+    <div class="section-head">
+      <div>
+        <h2>Key dates</h2>
+        <p>Official ACSEF 2027 dates. Past dates are checked off.</p>
+      </div>
+    </div>
+    <div class="card"><ol class="timeline" id="timelineList"></ol></div>
+  </section>
+
+  <section id="ai-log" aria-label="AI Use Log">
+    <div class="section-head">
+      <div>
+        <h2>AI Use Log</h2>
+        <p>Required by fair rules: log every time AI is used, and cite it.</p>
+      </div>
+      <button class="btn primary small" type="button" data-add="aiLog">+ Add AI use</button>
+    </div>
+    <div class="table-wrap" id="log-aiLog"></div>
+  </section>
+
+  <section id="experiments" aria-label="Experiment Log">
+    <div class="section-head">
+      <div>
+        <h2>Experiment Log</h2>
+        <p>One row per test run. Write down the settings before you start.</p>
+      </div>
+      <button class="btn primary small" type="button" data-add="expLog">+ Add test run</button>
+    </div>
+    <div class="table-wrap" id="log-expLog"></div>
+  </section>
+
+  <section id="parts" aria-label="Parts checklist">
+    <div class="section-head">
+      <div>
+        <h2>Parts checklist</h2>
+        <p>Cost is per item; the total updates as you type.</p>
+      </div>
+      <button class="btn primary small" type="button" data-add="parts">+ Add part</button>
+    </div>
+    <div class="table-wrap" id="log-parts"></div>
+  </section>
+</main>
+
+<footer>
+  <p><span id="saveStatus">Progress is saved in this browser.</span> <span id="syncNote">Turn on <b>Sync</b> to share it with the team through the Google Sheet.</span> <b>Export</b> downloads a backup file; <b>Import</b> loads one.
+  <button class="btn small ghost danger" type="button" id="btnReset" style="margin-left:6px">Start over…</button></p>
+</footer>
+
+<dialog class="sync" id="syncDlg" aria-labelledby="syncTitle">
+  <form class="dlg-body" id="syncForm">
+    <h2 id="syncTitle">Team sync</h2>
+    <p class="muted">Saves the tracker to the team's Google Sheet so the Captain, Teammate and Parent all see the same progress. This device keeps its own copy too, so the tracker still works offline. A parent sets up the Sheet once; see <a href="https://github.com/rshivarkar/acsef-2027-tracker#team-sync-setup" target="_blank" rel="noopener">the setup steps</a>.</p>
+    <label class="field">Apps Script web app URL
+      <input type="url" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false" required>
+    </label>
+    <label class="field">Team passcode
+      <input type="password" id="syncPass" autocomplete="current-password" required>
+    </label>
+    <label class="field">Who uses this device?
+      <select id="syncWho"><option value="">Choose…</option><option>Captain</option><option>Teammate</option><option>Parent</option></select>
+    </label>
+    <div class="dlg-msg" id="syncMsg" hidden></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost danger" id="syncOff">Turn sync off</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="syncClose">Close</button>
+      <button type="submit" class="btn primary" id="syncGo">Connect</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= Constants & seed data ================= */
+  var STORE_KEY = 'acsef2027-tracker-v1';
+  var SYNC_KEY = 'acsef2027-sync-v1';
+  // Optional: paste the team's Apps Script web app URL here so each device only needs the passcode.
+  // The URL is not secret on its own: every request also needs the team passcode.
+  var DEFAULT_SYNC_URL = '';
+  var OWNERS = ['Captain', 'Teammate', 'Both', 'Parent'];
+  var STATUSES = ['Not started', 'In progress', 'Done', 'Blocked'];
+  var STATUS_CLASS = { 'Not started': 's-todo', 'In progress': 's-prog', 'Done': 's-done', 'Blocked': 's-blocked' };
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var KIND_LABEL = { deadline: 'Fair deadline', fair: 'Fair day', team: 'Team goal', info: 'Heads-up' };
+
+  var SEED_PHASES = [
+    { id: 'p0', name: 'Phase 0: Team and admin', range: 'Nov 22–25' },
+    { id: 'p1', name: 'Phase 1: Research and Research Plan', range: 'Nov 23–30' },
+    { id: 'p2', name: 'Phase 2: Build the sensor system', range: 'Dec 1–10' },
+    { id: 'p3', name: 'Phase 3: Model houses', range: 'Dec 5–20' },
+    { id: 'p4', name: 'Phase 4: Calibration', range: 'Dec 10–24' },
+    { id: 'p5', name: 'Phase 5: Leak and vent tests', range: 'Dec 26 – Jan 31' },
+    { id: 'p6', name: 'Phase 6: Application and registration', range: 'Dec 15 – Feb 8' },
+    { id: 'p7', name: 'Phase 7: Analysis and display', range: 'Feb 1 – Mar 6' },
+    { id: 'p8', name: 'Phase 8: Fair prep', range: 'Mar 1–27' }
+  ];
+
+  // [phase, owner, due (MM-DD), title, description]  (Aug–Dec = 2026, Jan–Jul = 2027)
+  var SEED_TASKS = [
+    ['p0', 'Parent', '11-23', 'Send eligibility email to src.irb.acsef@gmail.com', 'Ask: can a team come from different schools? Are we Regular status? What AI use is allowed?'],
+    ['p0', 'Parent', '11-24', "Confirm teammate's school and whether either school runs its own fair", 'Find out if a school fair is a required step before ACSEF.'],
+    ['p0', 'Captain', '11-24', "Collect both students' and both parents' emails for the Interest Form", 'Four emails in total. Double-check the spelling.'],
+    ['p0', 'Both', '11-25', 'Agree on the main project question and roles', 'Write the question in one sentence and decide who leads each part.'],
+    ['p0', 'Both', '11-25', 'Start the digital notebook (Google Slides) with Day 1 ideas', 'Date every slide. Own words only.'],
+
+    ['p1', 'Parent', '11-24', 'Adults check house details', "Furnace size, attic insulation depth, wall insulation, window and door sizes, last December's therms."],
+    ['p1', 'Both', '11-24', 'Choose test room and second comparison room', 'The test room must be a room nobody sleeps in.'],
+    ['p1', 'Both', '11-27', 'Find and read 2 peer-reviewed papers', 'Annotate each one in the notebook.'],
+    ['p1', 'Captain', '11-27', 'Read the LBNL register-closing study (Walker, 2003) and DOE R-value guidance', 'Note the key findings and save the citations.'],
+    ['p1', 'Teammate', '11-27', 'Measure the test room and model-house dimensions', 'Record R-values with citations.'],
+    ['p1', 'Both', '11-28', 'Write the Research Plan', 'Official ACSEF format, future tense, in your own words.'],
+    ['p1', 'Captain', '11-28', 'Write the Engineering Addendum', ''],
+    ['p1', 'Teammate', '11-29', 'APA 7 references for the plan and addendum', ''],
+    ['p1', 'Captain', '11-29', 'Optional: Gemini Innovation & Background report', "Use the fair's exact prompt, and log it in the AI Use Log."],
+    ['p1', 'Captain', '11-30', 'Combine into one PDF and submit the Interest Form', 'Interest Form + Research Plan + Engineering Addendum as one PDF. The team captain submits, by midnight.'],
+
+    ['p2', 'Parent', '12-01', 'Order parts for ONE test box first', 'Add each part to the Parts checklist.'],
+    ['p2', 'Captain', '12-03', 'Set up the Google Sheet + Apps Script web app', 'The sheet receives the temperature readings.'],
+    ['p2', 'Captain', '12-05', 'Build and code the first box; confirm readings arrive in the sheet', ''],
+    ['p2', 'Parent', '12-05', 'Order remaining parts (6 more boxes)', ''],
+    ['p2', 'Captain', '12-06', 'Add deep sleep, battery voltage reporting, and a "sent OK" LED blink', ''],
+    ['p2', 'Teammate', '12-08', 'Assemble all boxes, labels, probe wires outside the box', 'Probes outside the box so the electronics do not warm the reading.'],
+    ['p2', 'Teammate', '12-08', 'Build the outdoor plant-saucer radiation shield', 'Keeps sun and rain off the outdoor probe.'],
+    ['p2', 'Both', '12-09', 'Side-by-side accuracy check', 'All probes together for 1 hour; record each probe\'s offset. Log it as Calibration.'],
+    ['p2', 'Both', '12-09', 'Self-heating test', 'Probe inside vs. outside the box.'],
+    ['p2', 'Both', '12-10', 'Install boxes: outdoor, hallway/thermostat, test room, second room, supply vent', ''],
+    ['p2', 'Parent', '12-10', 'Install attic and crawl space boxes', 'Adult-only locations.'],
+
+    ['p3', 'Teammate', '12-12', 'Build two identical foam model houses', ''],
+    ['p3', 'Teammate', '12-12', 'Make House B\'s "leak"', 'A hole or a thin plastic window.'],
+    ['p3', 'Captain', '12-14', 'Predict warm-up of both houses with the formula', 'Write the predictions down before testing.'],
+    ['p3', 'Both', '12-20', 'Run cold-pack tests', 'At least 3 runs for each house. Log every run in the Experiment Log.'],
+
+    ['p4', 'Parent', '12-10', 'Keep the same thermostat schedule every day', ''],
+    ['p4', 'Both', '12-24', 'Collect 1–2 weeks of normal nights and mornings', ''],
+    ['p4', 'Captain', '12-24', "Calculate each room's leakiness score and the house heat-storage number", ''],
+    ['p4', 'Captain', '12-24', 'Build the expected warm-up table vs. outdoor temperature', ''],
+
+    ['p5', 'Teammate', '01-02', 'Mid-study battery swap', 'Note the swap in the Experiment Log.'],
+    ['p5', 'Both', '01-05', 'Window open 1 inch, test room, one cold night', 'Log outdoor temp and weather.'],
+    ['p5', 'Both', '01-08', 'Window open 2 inches, test room, one cold night', 'Log outdoor temp and weather.'],
+    ['p5', 'Both', '01-12', 'Door draft stopper removed test', ''],
+    ['p5', 'Both', '01-20', 'Vents closed vs. open while furnace is off', 'Several nights each.'],
+    ['p5', 'Both', '01-25', 'Optional: vents closed vs. open while furnace runs', 'Track furnace runtime + attic temp.'],
+    ['p5', 'Parent', '01-31', 'Optional: crawl space before/after insulation', 'Only if insulation work happens in this window.'],
+    ['p5', 'Captain', '01-31', 'Weekly data check for gaps', 'Every Sunday: look for missing readings or low batteries. Tick it after the last check.', { repeat: 'weekly', repeatFrom: '2026-12-27' }],
+
+    ['p6', 'Captain', '01-11', 'Complete middle school application forms after SRC approval', ''],
+    ['p6', 'Parent', '02-08', 'Register both students on zFairs; pay or request fee waiver', '$55 per student unless waived. Registration opens Dec 15.'],
+
+    ['p7', 'Captain', '02-15', 'Charts: predicted vs. measured, leak tests, model houses', ''],
+    ['p7', 'Both', '02-20', 'Conclusions, limitations, future work', 'Say "detect", never "diagnose".'],
+    ['p7', 'Both', '02-22', 'Write the abstract in own words', ''],
+    ['p7', 'Teammate', '03-01', 'Design the display board / display items', ''],
+    ['p7', 'Captain', '03-06', 'Upload display items and notebook; self-nominate for special awards', 'Due by 11:59 pm.'],
+
+    ['p8', 'Both', '03-10', 'Practice the judge interview', 'Each student explains every part of the project.'],
+    ['p8', 'Both', '03-11', 'Pack demo', 'One sensor box, model houses, cold packs, laptop (offline display).'],
+    ['p8', 'Both', '03-12', 'Display setup at Chabot College', '3–8 pm, Hayward.'],
+    ['p8', 'Both', '03-13', 'Judging day', 'Both students must attend.'],
+    ['p8', 'Both', '03-27', 'Awards ceremony', 'Both students must attend.']
+  ];
+
+  var SEED_DATES = [
+    { date: '2026-11-25', title: 'Choose main project question', kind: 'team' },
+    { date: '2026-11-30', time: 'midnight', title: 'Interest Form + Research Plan + Engineering Addendum (one PDF)', kind: 'deadline' },
+    { date: '2026-12-15', title: 'zFairs registration opens', kind: 'info' },
+    { date: '2027-01-11', title: 'Application forms due', kind: 'deadline' },
+    { date: '2027-02-01', title: 'No Research Plan changes from this date', kind: 'deadline' },
+    { date: '2027-02-08', title: 'zFairs registration closes ($55 per student unless waived)', kind: 'deadline' },
+    { date: '2027-03-06', time: '11:59 pm', title: 'Display item uploads + special award self-nominations', kind: 'deadline' },
+    { date: '2027-03-12', time: '3–8 pm', title: 'Display setup, Chabot College, Hayward', kind: 'fair' },
+    { date: '2027-03-13', title: 'Judging interviews (both students must attend)', kind: 'fair' },
+    { date: '2027-03-27', title: 'Awards ceremony (both students must attend)', kind: 'fair' }
+  ];
+
+  var LOGS = {
+    aiLog: {
+      cls: 'log-ai',
+      empty: 'No AI use logged yet. Every time you use an AI tool, add a row here.',
+      columns: [
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'student', label: 'Student', type: 'select', options: ['Captain', 'Teammate', 'Both'] },
+        { key: 'tool', label: 'Tool', type: 'text', placeholder: 'e.g. Gemini' },
+        { key: 'prompt', label: 'Prompt / question', type: 'textarea' },
+        { key: 'purpose', label: 'What it helped with', type: 'textarea' },
+        { key: 'citation', label: 'How it was cited', type: 'textarea' }
+      ],
+      blank: function () { return { date: TODAY, student: 'Captain', tool: '', prompt: '', purpose: '', citation: '' }; }
+    },
+    expLog: {
+      cls: 'log-exp',
+      empty: 'No test runs yet. Add a row before each test.',
+      columns: [
+        { key: 'date', label: 'Date', type: 'date' },
+        { key: 'test', label: 'Test', type: 'select', options: ['Calibration', 'Leak test', 'Vent test', 'Model house'] },
+        { key: 'start', label: 'Start', type: 'time' },
+        { key: 'end', label: 'End', type: 'time' },
+        { key: 'outdoor', label: 'Outdoor °F', type: 'number', step: '0.1' },
+        { key: 'weather', label: 'Weather', type: 'select', options: ['', 'Sunny', 'Partly cloudy', 'Cloudy', 'Clear night', 'Rainy', 'Windy'] },
+        { key: 'settings', label: 'Window / vent / door settings', type: 'textarea' },
+        { key: 'ranBy', label: 'Who ran it', type: 'select', options: ['Both', 'Captain', 'Teammate', 'Parent'] },
+        { key: 'notes', label: 'Notes', type: 'textarea' }
+      ],
+      blank: function () { return { date: TODAY, test: 'Calibration', start: '', end: '', outdoor: '', weather: '', settings: '', ranBy: 'Both', notes: '' }; }
+    },
+    parts: {
+      cls: 'log-parts',
+      empty: 'No parts yet. Add each part as you plan or order it.',
+      columns: [
+        { key: 'item', label: 'Item', type: 'text', placeholder: 'e.g. ESP32-C3 SuperMini' },
+        { key: 'qty', label: 'Qty', type: 'number', step: '1', min: '0' },
+        { key: 'cost', label: 'Cost each ($)', type: 'number', step: '0.01', min: '0' },
+        { key: '_line', label: 'Line total', type: 'money' },
+        { key: 'ordered', label: 'Ordered', type: 'checkbox' },
+        { key: 'received', label: 'Received', type: 'checkbox' }
+      ],
+      blank: function () { return { item: '', qty: 1, cost: '', ordered: false, received: false }; }
+    }
+  };
+
+  /* ================= Date helpers ================= */
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function localToday() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function isDateStr(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s); }
+  function utc(s) { var p = s.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  function daysBetween(a, b) { return Math.round((utc(b) - utc(a)) / 86400000); }
+  function addDays(s, n) { var t = new Date(utc(s) + n * 86400000); return t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1) + '-' + pad(t.getUTCDate()); }
+  function weekday(s) { return new Date(utc(s)).getUTCDay(); }
+  function fmt(s, opts) {
+    if (!isDateStr(s)) return '';
+    var p = s.split('-'), out = MONTHS[+p[1] - 1] + ' ' + (+p[2]);
+    if (opts && opts.year) out += ', ' + p[0];
+    if (opts && opts.dow) out = DAYS[weekday(s)] + ', ' + out;
+    return out;
+  }
+  function relDays(n) {
+    if (n === 0) return 'today';
+    if (n === 1) return 'tomorrow';
+    if (n === -1) return 'yesterday';
+    return n > 0 ? 'in ' + n + ' days' : (-n) + ' days ago';
+  }
+
+  var params = new URLSearchParams(location.search);
+  var TODAY = isDateStr(params.get('today')) ? params.get('today') : localToday();
+
+  /* ================= State ================= */
+  function seedYear(mmdd) { return (+mmdd.slice(0, 2) >= 8 ? '2026' : '2027') + '-' + mmdd; }
+
+  function defaultState() {
+    return {
+      app: 'acsef2027-tracker',
+      version: 1,
+      phases: SEED_PHASES.map(function (p) { return { id: p.id, name: p.name, range: p.range }; }),
+      tasks: SEED_TASKS.map(function (r, i) {
+        var t = { id: 't' + (i + 1), phase: r[0], owner: r[1], due: seedYear(r[2]), title: r[3], desc: r[4],
+          status: 'Not started', notes: '', completedAt: null, repeat: '', repeatFrom: '' };
+        if (r[5]) { t.repeat = r[5].repeat; t.repeatFrom = r[5].repeatFrom; }
+        return t;
+      }),
+      keyDates: SEED_DATES.map(function (d) { return { date: d.date, time: d.time || '', title: d.title, kind: d.kind }; }),
+      aiLog: [], expLog: [], parts: [],
+      ui: { collapsed: {}, filters: { owner: 'all', status: 'all', openOnly: false }, rulesOpen: true }
+    };
+  }
+
+  function normalize(s) {
+    var d = defaultState();
+    if (!s || typeof s !== 'object') return d;
+    var out = {
+      app: d.app, version: 1,
+      phases: Array.isArray(s.phases) && s.phases.length ? s.phases.filter(function (p) { return p && p.id; }).map(function (p) {
+        return { id: String(p.id), name: String(p.name || 'Phase'), range: String(p.range || '') };
+      }) : d.phases,
+      tasks: Array.isArray(s.tasks) ? s.tasks.filter(function (t) { return t && t.id; }).map(function (t) {
+        return {
+          id: String(t.id), phase: String(t.phase || ''), title: String(t.title || 'Untitled task'), desc: String(t.desc || ''),
+          owner: OWNERS.indexOf(t.owner) >= 0 ? t.owner : 'Both',
+          due: isDateStr(t.due) ? t.due : '',
+          status: STATUSES.indexOf(t.status) >= 0 ? t.status : 'Not started',
+          notes: String(t.notes || ''),
+          completedAt: isDateStr(t.completedAt) ? t.completedAt : null,
+          repeat: t.repeat === 'weekly' ? 'weekly' : '',
+          repeatFrom: isDateStr(t.repeatFrom) ? t.repeatFrom : ''
+        };
+      }) : d.tasks,
+      keyDates: Array.isArray(s.keyDates) && s.keyDates.length ? s.keyDates.filter(function (k) { return k && isDateStr(k.date); }).map(function (k) {
+        return { date: k.date, time: String(k.time || ''), title: String(k.title || ''), kind: KIND_LABEL[k.kind] ? k.kind : 'deadline' };
+      }) : d.keyDates,
+      aiLog: normRows(s.aiLog), expLog: normRows(s.expLog), parts: normRows(s.parts),
+      ui: d.ui
+    };
+    if (s.ui && typeof s.ui === 'object') {
+      if (s.ui.collapsed && typeof s.ui.collapsed === 'object') out.ui.collapsed = s.ui.collapsed;
+      if (s.ui.filters && typeof s.ui.filters === 'object') {
+        var f = s.ui.filters;
+        out.ui.filters = {
+          owner: (f.owner === 'all' || OWNERS.indexOf(f.owner) >= 0) ? f.owner : 'all',
+          status: (f.status === 'all' || STATUSES.indexOf(f.status) >= 0) ? f.status : 'all',
+          openOnly: !!f.openOnly
+        };
+      }
+      if (typeof s.ui.rulesOpen === 'boolean') out.ui.rulesOpen = s.ui.rulesOpen;
+    }
+    // Tasks whose phase no longer exists go to the last phase so they are never invisible.
+    var ids = out.phases.map(function (p) { return p.id; });
+    out.tasks.forEach(function (t) { if (ids.indexOf(t.phase) < 0) t.phase = ids[ids.length - 1]; });
+    return out;
+  }
+  function normRows(a) {
+    if (!Array.isArray(a)) return [];
+    return a.filter(function (r) { return r && typeof r === 'object'; }).map(function (r) {
+      var o = {}; Object.keys(r).forEach(function (k) { o[k] = r[k]; });
+      if (!o.id) o.id = uid();
+      return o;
+    });
+  }
+
+  var storageOk = true;
+  function load() {
+    var raw = null;
+    try { raw = localStorage.getItem(STORE_KEY); } catch (e) { storageOk = false; }
+    if (!raw) return defaultState();
+    try { return normalize(JSON.parse(raw)); } catch (e) { return defaultState(); }
+  }
+  /** Writes the full state (including this device's view settings) to localStorage. */
+  function persist() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      storageOk = true;
+      $('#saveStatus').textContent = 'Saved on this device at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '.';
+    } catch (e) {
+      storageOk = false;
+    }
+    $('#storageBanner').hidden = storageOk;
+  }
+  /** Saves locally, then queues a push to the team Sheet if anything shared changed. */
+  function save() {
+    persist();
+    if (syncOn() && hasPending()) schedulePush(1200);
+  }
+
+  var state = load();
+  var expanded = {};
+
+  /* ================= Utilities ================= */
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function findTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }
+  function phaseName(id) { for (var i = 0; i < state.phases.length; i++) if (state.phases[i].id === id) return state.phases[i].name; return ''; }
+  function shortPhase(name) { return name.replace(/^Phase\s*/i, ''); }
+  function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(2); }
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+
+  /** Due date that counts for "this week"/"overdue". Weekly tasks point at the next Sunday in their window. */
+  function effDue(t) {
+    if (!t.due) return '';
+    if (t.repeat === 'weekly') {
+      var start = t.repeatFrom && t.repeatFrom > TODAY ? t.repeatFrom : TODAY;
+      var next = addDays(start, (7 - weekday(start)) % 7);
+      return next > t.due ? t.due : next;
+    }
+    return t.due;
+  }
+  function isDone(t) { return t.status === 'Done'; }
+  function isOverdue(t) { var d = effDue(t); return !isDone(t) && !!d && d < TODAY; }
+
+  /* ================= Dashboard ================= */
+  function byDate(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }
+
+  function renderDashboard() {
+    // Countdown
+    var dates = state.keyDates.slice().sort(byDate);
+    var upcoming = dates.filter(function (d) { return d.date >= TODAY; });
+    var next = upcoming.filter(function (d) { return d.kind === 'deadline' || d.kind === 'fair'; })[0];
+    var cd = $('#countdown');
+    cd.className = 'card countdown';
+    if (next) {
+      var n = daysBetween(TODAY, next.date);
+      if (n <= 3) cd.classList.add('urgent'); else if (n <= 7) cd.classList.add('soon');
+      var html = '<div class="label">Next deadline</div>' +
+        '<div class="big"><span class="num">' + n + '</span><span class="unit">' +
+        (n === 0 ? 'days left: due today!' : n === 1 ? 'day left' : 'days left') + '</span></div>' +
+        '<div class="what">' + esc(next.title) + '</div>' +
+        '<div class="when">' + fmt(next.date, { dow: true, year: true }) + (next.time ? ', ' + esc(next.time) : '') + '</div>';
+      var before = upcoming.filter(function (d) { return d.date < next.date; });
+      if (before.length) {
+        var b = before[0];
+        html += '<div class="also">Before that — ' + esc(KIND_LABEL[b.kind].toLowerCase()) + ': <b>' + esc(b.title) + '</b>, ' +
+          fmt(b.date, { dow: true }) + ' (' + relDays(daysBetween(TODAY, b.date)) + ')</div>';
+      }
+      cd.innerHTML = html;
+    } else {
+      cd.innerHTML = '<div class="label">Next deadline</div><div class="what">All fair dates are behind you. Great work!</div>';
+    }
+
+    // Overall + per-phase progress
+    var total = state.tasks.length, done = state.tasks.filter(isDone).length;
+    var pct = total ? Math.round(done / total * 100) : 0;
+    var ov = '<div class="overall-top"><h3>Overall progress</h3><span class="pct">' + pct + '%</span></div>' +
+      '<div class="bar" role="progressbar" aria-label="Overall progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
+      '<p class="muted" style="margin:6px 0 0;font-size:.88rem">' + done + ' of ' + total + ' tasks done</p><ul class="phase-bars">';
+    state.phases.forEach(function (p) {
+      var ts = state.tasks.filter(function (t) { return t.phase === p.id; });
+      var d = ts.filter(isDone).length, pp = ts.length ? Math.round(d / ts.length * 100) : 0;
+      ov += '<li><span title="' + esc(p.name) + '">' + esc(shortPhase(p.name)) + '</span>' +
+        '<div class="bar thin" role="progressbar" aria-label="' + esc(p.name) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pp + '"><i style="width:' + pp + '%"></i></div>' +
+        '<span>' + d + '/' + ts.length + '</span></li>';
+    });
+    $('#overall').innerHTML = ov + '</ul>';
+
+    // Due this week / overdue
+    var weekEnd = addDays(TODAY, 6);
+    var open = state.tasks.filter(function (t) { return !isDone(t) && effDue(t); });
+    var sortDue = function (a, b) { var x = effDue(a), y = effDue(b); return x < y ? -1 : x > y ? 1 : 0; };
+    var week = open.filter(function (t) { var d = effDue(t); return d >= TODAY && d <= weekEnd; }).sort(sortDue);
+    var late = open.filter(isOverdue).sort(sortDue);
+
+    $('#dueWeek').innerHTML = '<h3>Due this week<span class="count-badge">' + week.length + '</span></h3>' +
+      (week.length ? '<ul class="dlist">' + week.map(function (t) {
+        var d = effDue(t);
+        return dItem(t, fmt(d, { dow: true }), relDays(daysBetween(TODAY, d)));
+      }).join('') + '</ul>' : '<p class="empty-note">Nothing due in the next 7 days.</p>');
+
+    $('#overdue').innerHTML = '<h3>Overdue<span class="count-badge">' + late.length + '</span></h3>' +
+      (late.length ? '<ul class="dlist">' + late.map(function (t) {
+        var d = effDue(t), n = daysBetween(d, TODAY);
+        return dItem(t, 'Was due ' + fmt(d), n === 1 ? '1 day late' : n + ' days late');
+      }).join('') + '</ul>' : '<p class="empty-note">Nothing overdue. Nice!</p>');
+    $('#overdue').classList.toggle('overdue-card', late.length > 0);
+
+    // Alerts
+    var alerts = '';
+    if (TODAY >= '2027-02-01') alerts += '<div class="banner warn"><b>Research Plan is locked.</b> No Research Plan changes on or after Feb 1, 2027.</div>';
+    $('#alerts').innerHTML = alerts;
+  }
+  function dItem(t, when, rel) {
+    return '<li><button type="button" data-jump="' + esc(t.id) + '"><span class="t">' + esc(t.title) + '</span>' +
+      '<span class="d">' + esc(rel) + '</span>' +
+      '<span class="m">' + esc(t.owner) + ' · ' + esc(when) + ' · ' + esc(phaseName(t.phase).replace(/:.*/, '')) + '</span></button></li>';
+  }
+
+  /* ================= Tasks ================= */
+  function taskVisible(t) {
+    var f = state.ui.filters;
+    if (f.openOnly && isDone(t)) return false;
+    if (f.status !== 'all' && t.status !== f.status) return false;
+    if (f.owner !== 'all') {
+      if (f.owner === 'Captain' || f.owner === 'Teammate') { if (t.owner !== f.owner && t.owner !== 'Both') return false; }
+      else if (t.owner !== f.owner) return false;
+    }
+    return true;
+  }
+  function phaseTasks(pid) {
+    return state.tasks.map(function (t, i) { return { t: t, i: i }; })
+      .filter(function (x) { return x.t.phase === pid; })
+      .sort(function (a, b) {
+        var x = effDue(a.t) || '9999', y = effDue(b.t) || '9999';
+        return x < y ? -1 : x > y ? 1 : a.i - b.i;
+      })
+      .map(function (x) { return x.t; });
+  }
+
+  function renderTasks() {
+    var html = '';
+    state.phases.forEach(function (p) {
+      var all = phaseTasks(p.id), shown = all.filter(taskVisible);
+      var d = all.filter(isDone).length, pp = all.length ? Math.round(d / all.length * 100) : 0;
+      var collapsed = !!state.ui.collapsed[p.id];
+      html += '<div class="phase' + (collapsed ? ' collapsed' : '') + (all.length && d === all.length ? ' complete' : '') + '" data-phase="' + esc(p.id) + '">' +
+        '<button type="button" class="phase-head" data-act="phase" aria-expanded="' + !collapsed + '">' +
+        '<span class="chev" aria-hidden="true"></span>' +
+        '<span><span class="name">' + esc(p.name) + '</span><span class="range">' + esc(p.range) + '</span></span>' +
+        '<span class="cnt">' + d + '/' + all.length + (all.length && d === all.length ? ' ✓' : '') + '</span>' +
+        '<span class="bar thin" aria-hidden="true"><i style="width:' + pp + '%"></i></span>' +
+        '</button><div class="phase-body"><ul class="tasks">' +
+        shown.map(taskHTML).join('') + '</ul>' +
+        (shown.length ? '' : '<div class="nomatch">' + (all.length ? 'No tasks match the filters.' : 'No tasks yet.') + '</div>') +
+        '<div class="phase-foot"><button type="button" class="btn small ghost" data-act="add" data-phase="' + esc(p.id) + '">+ Add task</button></div>' +
+        '</div></div>';
+    });
+    $('#phases').innerHTML = html;
+  }
+
+  function taskHTML(t) {
+    var open = !!expanded[t.id], over = isOverdue(t), done = isDone(t), due = effDue(t);
+    var chips = '<span class="chip o-' + esc(t.owner) + '">' + esc(t.owner) + '</span>';
+    if (done) {
+      chips += '<span class="chip donedate">Done' + (t.completedAt ? ' ' + fmt(t.completedAt) : '') + '</span>';
+    } else if (due) {
+      var label = (t.repeat === 'weekly' ? 'Next check ' : 'Due ') + fmt(due, { dow: true });
+      if (over) label = 'Overdue · was due ' + fmt(due);
+      chips += '<span class="chip' + (over ? ' due-over' : '') + '">' + label + '</span>';
+    }
+    if (t.repeat === 'weekly' && !done) chips += '<span class="chip">Every Sunday</span>';
+    chips += '<span class="pill ' + STATUS_CLASS[t.status] + '">' + esc(t.status) + '</span>';
+    if (t.notes) chips += '<span class="chip" title="Has notes">✎ notes</span>';
+
+    var h = '<li class="task' + (open ? ' open' : '') + (over ? ' overdue' : '') + (done ? ' is-done' : '') + '" data-id="' + esc(t.id) + '">' +
+      '<div class="task-main">' +
+      '<label class="check"><input type="checkbox" data-act="done"' + (done ? ' checked' : '') + ' aria-label="Mark done: ' + esc(t.title) + '"><span></span></label>' +
+      '<button type="button" class="task-title" data-act="expand" aria-expanded="' + open + '">' +
+      '<span class="tt">' + esc(t.title) + '</span>' + (t.desc ? '<span class="td">' + esc(t.desc) + '</span>' : '') + '</button>' +
+      '<div class="chips">' + chips + '</div></div>';
+    if (open) {
+      h += '<div class="task-edit">' +
+        '<label class="field full">Title<input type="text" data-field="title" value="' + esc(t.title) + '"></label>' +
+        '<label class="field full">Short description<textarea data-field="desc" rows="2">' + esc(t.desc) + '</textarea></label>' +
+        '<label class="field">Owner<select data-field="owner">' + OWNERS.map(function (o) { return '<option' + (o === t.owner ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>' +
+        '<label class="field">Status<select data-field="status">' + STATUSES.map(function (s) { return '<option' + (s === t.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></label>' +
+        '<label class="field">' + (t.repeat === 'weekly' ? 'Repeat until' : 'Due date') + '<input type="date" data-field="due" value="' + esc(t.due) + '"></label>' +
+        '<label class="toggle" style="align-self:end"><input type="checkbox" data-field="repeat"' + (t.repeat === 'weekly' ? ' checked' : '') + '> Every Sunday</label>' +
+        '<label class="field full">Notes<textarea data-field="notes" rows="3" placeholder="What happened, what you learned, what is next…">' + esc(t.notes) + '</textarea></label>' +
+        '<div class="row-end"><span>' + esc(phaseName(t.phase)) + (t.completedAt ? ' · Completed ' + fmt(t.completedAt, { dow: true, year: true }) : '') + '</span>' +
+        '<span><button type="button" class="btn small ghost" data-act="expand">Close</button> ' +
+        '<button type="button" class="btn small danger" data-act="delete">Delete task</button></span></div>' +
+        '</div>';
+    }
+    return h + '</li>';
+  }
+
+  function setStatus(t, status) {
+    var was = t.status;
+    t.status = status;
+    if (status === 'Done' && was !== 'Done') t.completedAt = TODAY;
+    if (status !== 'Done') t.completedAt = null;
+  }
+
+  function refreshTasks(focusSel) {
+    renderTasks();
+    renderDashboard();
+    if (focusSel) { var el = $(focusSel); if (el) el.focus(); }
+  }
+  function sel(id, rest) { return '.task[data-id="' + id + '"] ' + rest; }
+
+  function onPhasesClick(e) {
+    var btn = e.target.closest('[data-act]');
+    if (!btn || btn.tagName === 'INPUT') return;
+    var act = btn.getAttribute('data-act');
+    if (act === 'phase') {
+      var pid = btn.closest('.phase').getAttribute('data-phase');
+      state.ui.collapsed[pid] = !state.ui.collapsed[pid];
+      save();
+      var ph = btn.closest('.phase');
+      ph.classList.toggle('collapsed', !!state.ui.collapsed[pid]);
+      btn.setAttribute('aria-expanded', String(!state.ui.collapsed[pid]));
+      return;
+    }
+    if (act === 'add') {
+      var t = { id: uid(), phase: btn.getAttribute('data-phase'), title: 'New task', desc: '', owner: 'Both', due: '',
+        status: 'Not started', notes: '', completedAt: null, repeat: '', repeatFrom: '' };
+      state.tasks.push(t);
+      changed('tasks', t.id);
+      expanded[t.id] = true;
+      if (!taskVisible(t)) { state.ui.filters = { owner: 'all', status: 'all', openOnly: false }; syncFilters(); }
+      save();
+      refreshTasks();
+      var inp = $(sel(t.id, '[data-field="title"]'));
+      if (inp) { inp.focus(); inp.select(); }
+      return;
+    }
+    var li = btn.closest('.task'); if (!li) return;
+    var id = li.getAttribute('data-id'), task = findTask(id); if (!task) return;
+    if (act === 'expand') {
+      expanded[id] = !expanded[id];
+      refreshTasks(sel(id, '.task-title'));
+    } else if (act === 'delete') {
+      if (confirm('Delete the task "' + task.title + '"? This cannot be undone.')) {
+        state.tasks = state.tasks.filter(function (x) { return x.id !== id; });
+        removed('tasks', id);
+        delete expanded[id];
+        save();
+        refreshTasks();
+      }
+    }
+  }
+
+  function onPhasesChange(e) {
+    var el = e.target, li = el.closest('.task'); if (!li) return;
+    var id = li.getAttribute('data-id'), t = findTask(id); if (!t) return;
+    if (el.getAttribute('data-act') === 'done') {
+      setStatus(t, el.checked ? 'Done' : 'Not started');
+      changed('tasks', id);
+      save();
+      refreshTasks(sel(id, '[data-act="done"]'));
+      return;
+    }
+    var f = el.getAttribute('data-field'); if (!f) return;
+    if (f === 'status') setStatus(t, el.value);
+    else if (f === 'owner') t.owner = el.value;
+    else if (f === 'due') t.due = isDateStr(el.value) ? el.value : '';
+    else if (f === 'repeat') {
+      t.repeat = el.checked ? 'weekly' : '';
+      if (el.checked && !t.repeatFrom) t.repeatFrom = TODAY;
+    } else return; // text fields are handled on input
+    changed('tasks', id);
+    save();
+    refreshTasks(sel(id, '[data-field="' + f + '"]'));
+  }
+
+  function onPhasesInput(e) {
+    var el = e.target, f = el.getAttribute('data-field');
+    if (!f || (f !== 'title' && f !== 'desc' && f !== 'notes')) return;
+    var li = el.closest('.task'), t = li && findTask(li.getAttribute('data-id')); if (!t) return;
+    t[f] = el.value;
+    changed('tasks', t.id);
+    if (f === 'title') { $('.tt', li).textContent = el.value || 'Untitled task'; renderDashboard(); }
+    if (f === 'desc') {
+      var td = $('.td', li);
+      if (!td && el.value) { td = document.createElement('span'); td.className = 'td'; $('.task-title', li).appendChild(td); }
+      if (td) td.textContent = el.value;
+    }
+    save();
+  }
+
+  function jumpTo(id) {
+    var t = findTask(id); if (!t) return;
+    if (!taskVisible(t)) { state.ui.filters = { owner: 'all', status: 'all', openOnly: false }; syncFilters(); }
+    state.ui.collapsed[t.phase] = false;
+    expanded[id] = true;
+    save();
+    renderTasks();
+    var li = $('.task[data-id="' + id + '"]');
+    if (li) {
+      li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      li.classList.add('flash');
+      var b = $('.task-title', li); if (b) b.focus({ preventScroll: true });
+    }
+  }
+
+  function syncFilters() {
+    var f = state.ui.filters;
+    $('#fOwner').value = f.owner; $('#fStatus').value = f.status; $('#fOpen').checked = f.openOnly;
+  }
+
+  /* ================= Timeline ================= */
+  function renderTimeline() {
+    var dates = state.keyDates.slice().sort(byDate);
+    var nextIdx = -1;
+    for (var i = 0; i < dates.length; i++) if (dates[i].date >= TODAY) { nextIdx = i; break; }
+    $('#timelineList').innerHTML = dates.map(function (d, i) {
+      var past = d.date < TODAY, n = daysBetween(TODAY, d.date);
+      var cls = past ? 'past' : i === nextIdx ? 'next' : '';
+      return '<li class="' + cls + '"><span class="dot" aria-hidden="true"></span>' +
+        '<div class="tl-date">' + fmt(d.date, { dow: true, year: true }) + (d.time ? ' · ' + esc(d.time) : '') + '</div>' +
+        '<div class="tl-title">' + esc(d.title) + '</div>' +
+        '<div class="tl-meta"><span class="pill k-' + d.kind + '">' + esc(KIND_LABEL[d.kind]) + '</span>' +
+        '<span class="pill ' + (past ? 's-todo' : n <= 7 ? 's-blocked' : 's-prog') + '">' + (past ? 'Past' : relDays(n)) + '</span>' +
+        (i === nextIdx ? '<span class="pill s-prog">Next up</span>' : '') + '</div></li>';
+    }).join('');
+  }
+
+  /* ================= Log tables ================= */
+  function cellHTML(c, r) {
+    var v = r[c.key], a = ' data-key="' + c.key + '" aria-label="' + esc(c.label) + '"';
+    switch (c.type) {
+      case 'textarea': return '<textarea rows="2"' + a + '>' + esc(v) + '</textarea>';
+      case 'select':
+        var opts = c.options.slice(); if (v && opts.indexOf(v) < 0) opts.push(v);
+        return '<select' + a + '>' + opts.map(function (o) { return '<option value="' + esc(o) + '"' + (o === (v || '') ? ' selected' : '') + '>' + (o ? esc(o) : '—') + '</option>'; }).join('') + '</select>';
+      case 'checkbox': return '<input type="checkbox"' + a + (v ? ' checked' : '') + '>';
+      case 'money': return '<span data-line>' + money(num(r.qty) * num(r.cost)) + '</span>';
+      default:
+        return '<input type="' + c.type + '"' + a + ' value="' + esc(v) + '"' +
+          (c.placeholder ? ' placeholder="' + esc(c.placeholder) + '"' : '') +
+          (c.step ? ' step="' + c.step + '"' : '') + (c.min ? ' min="' + c.min + '"' : '') +
+          (c.type === 'number' ? ' inputmode="decimal"' : '') + '>';
+    }
+  }
+
+  function renderLog(key) {
+    var def = LOGS[key], rows = state[key], cols = def.columns;
+    var h = '<table class="log ' + def.cls + '"><thead><tr>' + cols.map(function (c) { return '<th scope="col">' + esc(c.label) + '</th>'; }).join('') +
+      '<th scope="col"><span class="sr">Delete</span></th></tr></thead><tbody>';
+    if (!rows.length) h += '<tr class="empty"><td colspan="' + (cols.length + 1) + '">' + esc(def.empty) + '</td></tr>';
+    rows.forEach(function (r) {
+      h += '<tr data-row="' + esc(r.id) + '">' + cols.map(function (c) {
+        var cls = c.type === 'checkbox' ? ' class="ctr"' : c.type === 'money' ? ' class="money"' : '';
+        return '<td data-label="' + esc(c.label) + '"' + cls + '>' + cellHTML(c, r) + '</td>';
+      }).join('') + '<td class="act"><button type="button" class="del" data-del="1" aria-label="Delete row">Delete</button></td></tr>';
+    });
+    h += '</tbody>';
+    if (key === 'parts') h += '<tfoot><tr><td colspan="' + (cols.length + 1) + '"><div class="totals" id="partsTotals"></div></td></tr></tfoot>';
+    $('#log-' + key).innerHTML = h + '</table>';
+    if (key === 'parts') updatePartsTotals();
+  }
+
+  function updatePartsTotals() {
+    var el = $('#partsTotals'); if (!el) return;
+    var total = 0, ordered = 0, received = 0;
+    state.parts.forEach(function (p) { total += num(p.qty) * num(p.cost); if (p.ordered) ordered++; if (p.received) received++; });
+    el.innerHTML = '<span>Ordered ' + ordered + '/' + state.parts.length + '</span><span>Received ' + received + '/' + state.parts.length + '</span><span>Total cost: ' + money(total) + '</span>';
+  }
+
+  function onLogEdit(e) {
+    var el = e.target, key = el.getAttribute('data-key'); if (!key) return;
+    var wrap = el.closest('[data-log]'), tr = el.closest('tr[data-row]'); if (!wrap || !tr) return;
+    var log = wrap.getAttribute('data-log'), id = tr.getAttribute('data-row');
+    var row = state[log].filter(function (r) { return r.id === id; })[0]; if (!row) return;
+    row[key] = el.type === 'checkbox' ? el.checked : el.value;
+    changed(log, id);
+    if (log === 'parts') {
+      var line = $('[data-line]', tr); if (line) line.textContent = money(num(row.qty) * num(row.cost));
+      updatePartsTotals();
+    }
+    save();
+  }
+
+  function onLogClick(e) {
+    var b = e.target.closest('[data-del]'); if (!b) return;
+    var wrap = b.closest('[data-log]'), tr = b.closest('tr[data-row]');
+    var log = wrap.getAttribute('data-log'), id = tr.getAttribute('data-row');
+    if (!confirm('Delete this row? This cannot be undone.')) return;
+    state[log] = state[log].filter(function (r) { return r.id !== id; });
+    removed(log, id);
+    save();
+    renderLog(log);
+  }
+
+  function addRow(log) {
+    var r = LOGS[log].blank(); r.id = uid();
+    state[log].push(r);
+    changed(log, r.id);
+    save();
+    renderLog(log);
+    var first = $('#log-' + log + ' tr[data-row="' + r.id + '"] [data-key]');
+    if (first) { first.focus(); first.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
+
+  /* ================= Team sync (Google Sheet via Apps Script) =================
+     The device copy (localStorage) is always written first, so the page works offline.
+     The team copy lives in a Google Sheet behind an Apps Script web app (apps-script/Code.gs).
+     Each device remembers which records it changed or deleted since its last successful push
+     ("pending"). When another device saved in the meantime, we take the team copy and
+     re-apply only our pending records, so two people editing different tasks never
+     overwrite each other. Same record edited on both sides: the later save wins. */
+  var COLLS = ['tasks', 'aiLog', 'expLog', 'parts'];
+  var sync = loadSync();
+  var pushTimer = null, inFlight = false, editSeq = 0, needsRender = false;
+
+  function blankSet() { var o = {}; COLLS.forEach(function (c) { o[c] = {}; }); return o; }
+  function fixSet(p) {
+    var o = blankSet();
+    if (p && typeof p === 'object') COLLS.forEach(function (c) {
+      if (p[c] && typeof p[c] === 'object') Object.keys(p[c]).forEach(function (id) { o[c][id] = 1; });
+    });
+    return o;
+  }
+  function loadSync() {
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(SYNC_KEY) || 'null'); } catch (e) { s = null; }
+    s = s && typeof s === 'object' ? s : {};
+    return {
+      url: String(s.url || ''), passcode: String(s.passcode || ''), who: String(s.who || ''),
+      rev: typeof s.rev === 'number' ? s.rev : -1,
+      pending: fixSet(s.pending), removed: fixSet(s.removed), lastSync: String(s.lastSync || '')
+    };
+  }
+  function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) { /* device copy still works */ } }
+  function syncOn() { return !!(sync.url && sync.passcode); }
+  function hasPending() {
+    return COLLS.some(function (c) { return Object.keys(sync.pending[c]).length > 0 || Object.keys(sync.removed[c]).length > 0; });
+  }
+  function clearPending() { sync.pending = blankSet(); sync.removed = blankSet(); }
+  function changed(coll, id) {
+    editSeq++;
+    if (!syncOn()) return;
+    delete sync.removed[coll][id];
+    sync.pending[coll][id] = 1;
+    saveSync();
+  }
+  function removed(coll, id) {
+    editSeq++;
+    if (!syncOn()) return;
+    delete sync.pending[coll][id];
+    sync.removed[coll][id] = 1;
+    saveSync();
+  }
+  function sharedPart(s) {
+    return { app: s.app, version: s.version, phases: s.phases, tasks: s.tasks, keyDates: s.keyDates,
+      aiLog: s.aiLog, expLog: s.expLog, parts: s.parts };
+  }
+
+  /** Team copy + this device's unsent changes on top. */
+  function mergeRemote(remote) {
+    var local = state, next = normalize(remote);
+    next.ui = local.ui;
+    COLLS.forEach(function (c) {
+      Object.keys(sync.removed[c]).forEach(function (id) {
+        next[c] = next[c].filter(function (r) { return r.id !== id; });
+      });
+      Object.keys(sync.pending[c]).forEach(function (id) {
+        var mine = local[c].filter(function (r) { return r.id === id; })[0];
+        if (!mine) return;
+        var copy = JSON.parse(JSON.stringify(mine)), at = -1;
+        for (var i = 0; i < next[c].length; i++) if (next[c][i].id === id) { at = i; break; }
+        if (at >= 0) next[c][at] = copy; else next[c].push(copy);
+      });
+    });
+    state = next;
+  }
+
+  function api(body) {
+    body.passcode = sync.passcode;
+    return fetch(sync.url, {
+      method: 'POST',
+      // text/plain keeps this a "simple" request, which Apps Script web apps accept cross-origin.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+      redirect: 'follow'
+    }).then(function (r) {
+      if (!r.ok) throw new Error('The sync server answered with error ' + r.status + '.');
+      return r.text();
+    }).then(function (txt) {
+      try { return JSON.parse(txt); } catch (e) {
+        throw new Error('Unexpected reply. Check the web app is deployed with "Who has access: Anyone".');
+      }
+    });
+  }
+
+  function errorText(res) {
+    var map = {
+      bad_passcode: 'Wrong team passcode.',
+      passcode_not_set: 'The Apps Script still has the default passcode. Set PASSCODE in Code.gs and deploy a new version.',
+      bad_request: 'The sync server did not understand the request.',
+      too_large: 'The tracker data is too big for the Sheet.'
+    };
+    return map[res && res.error] || ('Sync error: ' + ((res && res.error) || 'unknown'));
+  }
+
+  function setSync(s, detail) {
+    var b = $('#btnSync'), t = $('#syncText');
+    b.setAttribute('data-s', s);
+    var labels = { off: 'Sync off', idle: 'Synced', saving: 'Saving…', offline: 'Offline', error: 'Sync problem' };
+    t.textContent = labels[s];
+    var tip = {
+      off: 'Team sync is off. Changes are saved on this device only.',
+      idle: 'Saved to the team Google Sheet' + (sync.lastSync ? ' at ' + new Date(sync.lastSync).toLocaleString() : '') + '.',
+      saving: 'Sending changes to the team Google Sheet…',
+      offline: 'Can\'t reach the team Google Sheet. Changes are saved on this device and will be sent when you are back online.',
+      error: detail || 'Sync problem. Click to check the settings.'
+    }[s];
+    b.title = tip;
+    $('#syncNote').textContent = s === 'off' ? 'Turn on Sync to share it with the team through the Google Sheet.' : tip;
+  }
+
+  function isEditing() {
+    var a = document.activeElement;
+    return !!(a && a.closest && a.closest('main') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) &&
+      a.type !== 'checkbox' && a.type !== 'button');
+  }
+  /** Re-render after remote changes, but never under someone's cursor while they type. */
+  function renderSafe() {
+    if (!isEditing()) { needsRender = false; renderAll(); return; }
+    // Redraw everything except the section holding the cursor; that one waits for focusout.
+    var a = document.activeElement, logEl = a.closest('[data-log]');
+    var skip = a.closest('#phases') ? 'tasks' : logEl ? logEl.getAttribute('data-log') : 'all';
+    needsRender = true;
+    if (skip === 'all') return;
+    renderDashboard();
+    renderTimeline();
+    if (skip !== 'tasks') renderTasks();
+    Object.keys(LOGS).forEach(function (k) { if (k !== skip) renderLog(k); });
+  }
+
+  function schedulePush(ms) {
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(function () { pushNow(false); }, ms);
+  }
+
+  function pushNow(force) {
+    if (!syncOn()) return Promise.resolve();
+    if (inFlight) { schedulePush(800); return Promise.resolve(); }
+    inFlight = true;
+    setSync('saving');
+    var seq = editSeq;
+    return api({ action: 'put', baseRevision: sync.rev, force: !!force, by: sync.who, state: sharedPart(state) }).then(function (res) {
+      inFlight = false;
+      if (res.ok) {
+        sync.rev = res.revision;
+        if (seq === editSeq) clearPending();
+        sync.lastSync = new Date().toISOString();
+        saveSync();
+        setSync('idle');
+        if (hasPending()) schedulePush(400);
+        return;
+      }
+      if (res.error === 'conflict') {
+        // Someone else saved first: take their copy, keep our unsent changes, try again.
+        if (res.state) { mergeRemote(res.state); persist(); renderSafe(); }
+        sync.rev = res.revision;
+        saveSync();
+        schedulePush(200);
+        return;
+      }
+      if (res.error === 'busy') { schedulePush(3000); return; }
+      setSync('error', errorText(res));
+    }).catch(function (e) {
+      inFlight = false;
+      setSync('offline', e && e.message);
+    });
+  }
+
+  function pull() {
+    if (!syncOn() || inFlight) return Promise.resolve();
+    inFlight = true;
+    return api({ action: 'get' }).then(function (res) {
+      inFlight = false;
+      if (!res.ok) { setSync('error', errorText(res)); return; }
+      if (!res.state) {            // Team Sheet is empty (or was cleared): upload this device's copy.
+        sync.rev = res.revision;
+        saveSync();
+        return pushNow(true);
+      }
+      if (res.revision !== sync.rev) {
+        mergeRemote(res.state);
+        sync.rev = res.revision;
+        persist();
+        renderSafe();
+      }
+      sync.lastSync = new Date().toISOString();
+      saveSync();
+      if (hasPending()) return pushNow(false);
+      setSync('idle');
+    }).catch(function (e) {
+      inFlight = false;
+      setSync('offline', e && e.message);
+    });
+  }
+
+  /** After Import / Start over: this device's data becomes the team copy. */
+  function replaceTeamCopy() {
+    if (!syncOn()) return;
+    clearPending();
+    saveSync();
+    pushNow(true);
+  }
+
+  /* ----- Sync settings dialog ----- */
+  function dlgMsg(text, kind) {
+    var m = $('#syncMsg');
+    m.hidden = !text; m.textContent = text || ''; m.className = 'dlg-msg' + (kind ? ' ' + kind : '');
+  }
+  function openSyncDialog() {
+    $('#syncUrl').value = sync.url || DEFAULT_SYNC_URL;
+    $('#syncPass').value = sync.passcode;
+    $('#syncWho').value = sync.who;
+    $('#syncOff').hidden = !syncOn();
+    $('#syncGo').textContent = syncOn() ? 'Save & sync now' : 'Connect';
+    var st = $('#btnSync').getAttribute('data-s');
+    dlgMsg(syncOn() ? $('#btnSync').title : '', st === 'error' ? 'err' : st === 'idle' ? 'ok' : '');
+    var d = $('#syncDlg');
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+  }
+  function closeSyncDialog() { var d = $('#syncDlg'); if (d.close) d.close(); else d.removeAttribute('open'); }
+
+  function connect(url, pass, who) {
+    url = url.trim();
+    if (!/^https:\/\/\S+$/.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/\S*$/.test(url)) {
+      dlgMsg('That does not look like a web app URL. It should start with https://script.google.com/', 'err');
+      return;
+    }
+    var same = url === sync.url && pass === sync.passcode;
+    var old = { url: sync.url, passcode: sync.passcode };
+    sync.url = url; sync.passcode = pass; sync.who = who;
+    dlgMsg('Connecting…');
+    $('#syncGo').disabled = true;
+    api({ action: 'get' }).then(function (res) {
+      $('#syncGo').disabled = false;
+      if (!res.ok) { sync.url = old.url; sync.passcode = old.passcode; dlgMsg(errorText(res), 'err'); return; }
+      if (same && sync.rev >= 0) {          // Already connected; just sync now.
+        saveSync(); closeSyncDialog(); pull(); return;
+      }
+      if (!res.state) {                     // Empty team Sheet: this device starts it.
+        sync.rev = res.revision; clearPending(); saveSync();
+        closeSyncDialog();
+        pushNow(true);
+        return;
+      }
+      var when = res.updatedAt ? new Date(res.updatedAt).toLocaleString() : 'earlier';
+      var ok = confirm('The team Sheet already has tracker data (last saved ' + when +
+        (res.updatedBy ? ' by ' + res.updatedBy : '') + ').\n\nLoad it on this device? What is on this device now will be replaced.\n\n' +
+        'Tip: click Cancel, then Export, if you want to keep a backup of this device first.');
+      if (!ok) { sync.url = old.url; sync.passcode = old.passcode; dlgMsg('Not connected. Nothing was changed.'); return; }
+      var ui = state.ui;
+      state = normalize(res.state); state.ui = ui;
+      sync.rev = res.revision; clearPending();
+      sync.lastSync = new Date().toISOString();
+      saveSync(); persist(); renderAll();
+      setSync('idle');
+      closeSyncDialog();
+    }).catch(function (e) {
+      $('#syncGo').disabled = false;
+      sync.url = old.url; sync.passcode = old.passcode;
+      dlgMsg('Could not reach the web app. ' + ((e && e.message) || ''), 'err');
+    });
+  }
+
+  function disconnect() {
+    if (!confirm('Turn team sync off on this device? Your data stays on this device; the team Sheet is not changed.')) return;
+    clearTimeout(pushTimer);
+    sync = { url: '', passcode: '', who: sync.who, rev: -1, pending: blankSet(), removed: blankSet(), lastSync: '' };
+    saveSync();
+    setSync('off');
+    closeSyncDialog();
+  }
+
+  /* ================= Export / Import / Reset ================= */
+  function exportJSON() {
+    var data = JSON.parse(JSON.stringify(state));
+    data.exportedAt = new Date().toISOString();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = 'acsef-tracker-backup-' + localToday() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function importFile(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data;
+      try { data = JSON.parse(String(reader.result)); } catch (e) { alert('That file is not valid JSON, so nothing was changed.'); return; }
+      if (!data || typeof data !== 'object' || !Array.isArray(data.tasks) || !Array.isArray(data.phases)) {
+        alert('That file does not look like a tracker backup (no tasks or phases found), so nothing was changed.'); return;
+      }
+      if (!confirm('Replace everything on this page with the backup "' + file.name + '"' +
+        (data.exportedAt ? ' (exported ' + new Date(data.exportedAt).toLocaleString() + ')' : '') + '?' +
+        (syncOn() ? '\n\nTeam sync is on, so this also replaces the team copy in the Google Sheet for everyone.' : ''))) return;
+      state = normalize(data);
+      expanded = {};
+      persist();
+      replaceTeamCopy();
+      renderAll();
+      alert('Backup loaded: ' + state.tasks.length + ' tasks, ' + state.aiLog.length + ' AI log rows, ' +
+        state.expLog.length + ' experiment rows, ' + state.parts.length + ' parts.');
+    };
+    reader.onerror = function () { alert('Could not read that file.'); };
+    reader.readAsText(file);
+  }
+
+  /* ================= Wiring ================= */
+  function renderAll() {
+    syncFilters();
+    $('#rules').open = state.ui.rulesOpen;
+    renderDashboard();
+    renderTasks();
+    renderTimeline();
+    Object.keys(LOGS).forEach(renderLog);
+  }
+
+  function init() {
+    if (TODAY !== localToday()) {
+      var db = $('#debugBanner'); db.hidden = false;
+      db.textContent = 'Preview mode: pretending today is ' + fmt(TODAY, { dow: true, year: true }) + ' (set by ?today= in the address).';
+    }
+    Object.keys(LOGS).forEach(function (k) { $('#log-' + k).setAttribute('data-log', k); });
+
+    var phases = $('#phases');
+    phases.addEventListener('click', onPhasesClick);
+    phases.addEventListener('change', onPhasesChange);
+    phases.addEventListener('input', onPhasesInput);
+
+    $('#dashboard').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-jump]'); if (b) jumpTo(b.getAttribute('data-jump'));
+    });
+
+    function onFilter() {
+      state.ui.filters = { owner: $('#fOwner').value, status: $('#fStatus').value, openOnly: $('#fOpen').checked };
+      save(); renderTasks();
+    }
+    $('#fOwner').addEventListener('change', onFilter);
+    $('#fStatus').addEventListener('change', onFilter);
+    $('#fOpen').addEventListener('change', onFilter);
+    $('#btnExpandAll').addEventListener('click', function () { state.ui.collapsed = {}; save(); renderTasks(); });
+    $('#btnCollapseAll').addEventListener('click', function () {
+      state.phases.forEach(function (p) { state.ui.collapsed[p.id] = true; }); save(); renderTasks();
+    });
+    $('#rules').addEventListener('toggle', function () { state.ui.rulesOpen = $('#rules').open; save(); });
+
+    Object.keys(LOGS).forEach(function (k) {
+      var w = $('#log-' + k);
+      w.addEventListener('input', onLogEdit);
+      w.addEventListener('change', onLogEdit);
+      w.addEventListener('click', onLogClick);
+    });
+    $all('[data-add]').forEach(function (b) { b.addEventListener('click', function () { addRow(b.getAttribute('data-add')); }); });
+
+    $('#btnExport').addEventListener('click', exportJSON);
+    $('#btnImport').addEventListener('click', function () { $('#fileImport').click(); });
+    $('#fileImport').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0]; if (f) importFile(f);
+      e.target.value = '';
+    });
+    $('#btnReset').addEventListener('click', function () {
+      if (!confirm('Start over? This erases all progress, notes and logs and restores the starting task list.' +
+        (syncOn() ? '\n\nTeam sync is on, so this also erases the team copy in the Google Sheet for everyone.' : '') +
+        '\n\nTip: click Export first to keep a backup.')) return;
+      state = defaultState(); expanded = {}; persist(); replaceTeamCopy(); renderAll();
+    });
+
+    // Sync wiring
+    $('#btnSync').addEventListener('click', openSyncDialog);
+    $('#syncClose').addEventListener('click', closeSyncDialog);
+    $('#syncOff').addEventListener('click', disconnect);
+    $('#syncForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      connect($('#syncUrl').value, $('#syncPass').value, $('#syncWho').value);
+    });
+    document.addEventListener('focusout', function () {
+      setTimeout(function () { if (needsRender && !isEditing()) { needsRender = false; renderAll(); } }, 0);
+    });
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') pull(); });
+    window.addEventListener('online', function () { if (hasPending()) pushNow(false); else pull(); });
+    setInterval(function () { if (document.visibilityState === 'visible') pull(); }, 30000);
+
+    renderAll();
+    $('#storageBanner').hidden = storageOk;
+    if (!storageOk) $('#saveStatus').textContent = 'Saving is not available in this browser.';
+    setSync(syncOn() ? 'saving' : 'off');
+    pull();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

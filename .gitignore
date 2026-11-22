@@ -1,0 +1,11 @@
+# Local tool settings
+.claude/
+
+# Exported tracker backups hold team data: keep them out of this public repo
+acsef-tracker-backup-*.json
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
+node_modules/
