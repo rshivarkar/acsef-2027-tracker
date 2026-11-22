@@ -7,6 +7,14 @@ It has a deadline countdown, progress by phase, all tasks, key dates, the AI Use
 
 You can also download `index.html` and double-click it. It works offline with no install.
 
+## Team names
+
+Click **Add names** (under the dashboard) and type the Captain, Teammate and both parents' first names. Tasks, filters, logs and the Sheet's readable tabs then show names instead of roles.
+
+- Owners are *Captain*, *Teammate*, *Both*, *Captain's parent*, *Teammate's parent*, or *Either parent*.
+- The seeded parent tasks start as *Either parent*. Reassign each one in the task editor.
+- Names are stored as tracker data, on each device and in the team Sheet when Sync is on. They are never in this public repo or the website code, so the live site shows roles until the names are entered (or synced) on that device.
+
 ## How data is saved
 
 | Where | What | When |

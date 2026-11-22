@@ -85,6 +85,14 @@ dialog.sync::backdrop{background:rgba(10,15,25,.55)}
 .dlg-msg.err{background:var(--over-soft);color:var(--over)}
 .dlg-msg.ok{background:var(--done-soft);color:var(--done)}
 .dlg-msg[hidden]{display:none}
+.dlg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.dlg-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- Team strip ---------- */
+.team-strip{margin-top:14px;display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;font-size:.92rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;box-shadow:var(--shadow)}
+.team-strip .who{display:inline-flex;align-items:center;gap:6px}
+.team-strip .lbl2{color:var(--muted);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.team-strip .grow{flex:1}
 
 main{max-width:1120px;margin:0 auto;padding:16px 16px 60px}
 section{scroll-margin-top:120px;margin-bottom:28px}
@@ -350,6 +358,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
       <div class="card" id="dueWeek"></div>
       <div class="card overdue-card" id="overdue"></div>
     </div>
+    <div class="team-strip" id="teamStrip"></div>
   </section>
 
   <section id="rules-section" aria-label="Rules reminder">
@@ -365,6 +374,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
         <li>Any <b>AI use must be logged</b> with date, prompt and purpose, and cited (use the AI Use Log below).</li>
         <li><b>No Research Plan changes on or after Feb 1, 2027.</b></li>
         <li>Adults (Parent) help with safety-related tasks only.</li>
+        <li>Questions to the SRC/IRB (src.irb.acsef@gmail.com) come from the <b>team captain</b>, copying the teammate and both parents.</li>
       </ul>
     </details>
   </section>
@@ -378,13 +388,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
     </div>
     <div class="filters">
       <label class="field">Owner
-        <select id="fOwner">
-          <option value="all">Everyone</option>
-          <option value="Captain">Captain (+ Both)</option>
-          <option value="Teammate">Teammate (+ Both)</option>
-          <option value="Both">Both only</option>
-          <option value="Parent">Parent</option>
-        </select>
+        <select id="fOwner"></select>
       </label>
       <label class="field">Status
         <select id="fStatus">
@@ -463,7 +467,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
       <input type="password" id="syncPass" autocomplete="current-password" required>
     </label>
     <label class="field">Who uses this device?
-      <select id="syncWho"><option value="">Choose…</option><option>Captain</option><option>Teammate</option><option>Parent</option></select>
+      <select id="syncWho"></select>
     </label>
     <div class="dlg-msg" id="syncMsg" hidden></div>
     <div class="dlg-actions">
@@ -471,6 +475,24 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
       <span class="grow"></span>
       <button type="button" class="btn" id="syncClose">Close</button>
       <button type="submit" class="btn primary" id="syncGo">Connect</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="sync" id="teamDlg" aria-labelledby="teamTitle">
+  <form class="dlg-body" id="teamForm">
+    <h2 id="teamTitle">Team names</h2>
+    <p class="muted">The names show on tasks, filters and logs. They are saved on this device and, when Sync is on, in the team Google Sheet, so you only type them once. They are never part of the public website code.</p>
+    <div class="dlg-grid">
+      <label class="field">Captain (8th grade)<input type="text" id="tnCaptain" maxlength="30" autocomplete="off" placeholder="First name"></label>
+      <label class="field">Captain's parent<input type="text" id="tnCaptainParent" maxlength="30" autocomplete="off" placeholder="First name"></label>
+      <label class="field">Teammate (6th grade)<input type="text" id="tnTeammate" maxlength="30" autocomplete="off" placeholder="First name"></label>
+      <label class="field">Teammate's parent<input type="text" id="tnTeammateParent" maxlength="30" autocomplete="off" placeholder="First name"></label>
+    </div>
+    <div class="dlg-actions">
+      <span class="grow"></span>
+      <button type="button" class="btn" id="teamClose">Cancel</button>
+      <button type="submit" class="btn primary">Save names</button>
     </div>
   </form>
 </dialog>
@@ -485,7 +507,10 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
   // Optional: paste the team's Apps Script web app URL here so each device only needs the passcode.
   // The URL is not secret on its own: every request also needs the team passcode.
   var DEFAULT_SYNC_URL = '';
-  var OWNERS = ['Captain', 'Teammate', 'Both', 'Parent'];
+  // Owner values are role keys; names come from state.team so they can change without touching tasks.
+  // 'Parent' = either parent, 'ParentA' = Captain's parent, 'ParentB' = Teammate's parent.
+  var OWNERS = ['Captain', 'Teammate', 'Both', 'Parent', 'ParentA', 'ParentB'];
+  var TEAM_KEYS = ['captain', 'teammate', 'captainParent', 'teammateParent'];
   var STATUSES = ['Not started', 'In progress', 'Done', 'Blocked'];
   var STATUS_CLASS = { 'Not started': 's-todo', 'In progress': 's-prog', 'Done': 's-done', 'Blocked': 's-blocked' };
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -589,7 +614,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
       empty: 'No AI use logged yet. Every time you use an AI tool, add a row here.',
       columns: [
         { key: 'date', label: 'Date', type: 'date' },
-        { key: 'student', label: 'Student', type: 'select', options: ['Captain', 'Teammate', 'Both'] },
+        { key: 'student', label: 'Student', type: 'select', roles: true, options: ['Captain', 'Teammate', 'Both'] },
         { key: 'tool', label: 'Tool', type: 'text', placeholder: 'e.g. Gemini' },
         { key: 'prompt', label: 'Prompt / question', type: 'textarea' },
         { key: 'purpose', label: 'What it helped with', type: 'textarea' },
@@ -608,7 +633,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
         { key: 'outdoor', label: 'Outdoor °F', type: 'number', step: '0.1' },
         { key: 'weather', label: 'Weather', type: 'select', options: ['', 'Sunny', 'Partly cloudy', 'Cloudy', 'Clear night', 'Rainy', 'Windy'] },
         { key: 'settings', label: 'Window / vent / door settings', type: 'textarea' },
-        { key: 'ranBy', label: 'Who ran it', type: 'select', options: ['Both', 'Captain', 'Teammate', 'Parent'] },
+        { key: 'ranBy', label: 'Who ran it', type: 'select', roles: true, options: ['Both', 'Captain', 'Teammate', 'ParentA', 'ParentB'] },
         { key: 'notes', label: 'Notes', type: 'textarea' }
       ],
       blank: function () { return { date: TODAY, test: 'Calibration', start: '', end: '', outdoor: '', weather: '', settings: '', ranBy: 'Both', notes: '' }; }
@@ -656,10 +681,65 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
   /* ================= State ================= */
   function seedYear(mmdd) { return (+mmdd.slice(0, 2) >= 8 ? '2026' : '2027') + '-' + mmdd; }
 
+  /* ----- Seed updates -----
+     Stored progress never re-reads SEED_TASKS, so later changes to the starting list are applied
+     here, once per saved state (tracked by state.seedVersion). Each step is idempotent and only
+     touches a task the team has not edited, so it is safe on any device, backup or synced copy. */
+  var SEED_VERSION = 2;
+  function seedTask(s, id) { for (var i = 0; i < s.tasks.length; i++) if (s.tasks[i].id === id) return s.tasks[i]; return null; }
+  function addSeedTask(s, id, phase, owner, mmdd, title, desc) {
+    if (seedTask(s, id)) return;
+    s.tasks.push({ id: id, phase: phase, owner: owner, due: seedYear(mmdd), title: title, desc: desc,
+      status: 'Not started', notes: '', completedAt: null, repeat: '', repeatFrom: '' });
+  }
+  var SEED_UPDATES = {
+    // Nov 22, 2026: SRC/IRB answered the eligibility email.
+    2: function (s) {
+      var t1 = seedTask(s, 't1');
+      if (t1 && t1.title === SEED_TASKS[0][3]) {
+        if (t1.status === 'Not started') { t1.status = 'Done'; t1.completedAt = '2026-11-22'; }
+        if (!t1.notes) {
+          t1.notes = 'SRC/IRB reply (Nov 2026): yes, a team can include students from different schools in Alameda County. ' +
+            'Besides the Interest Form, upload the Research Plan and any addendum that applies (Engineering and/or ML/AI Computation). ' +
+            'Before opening the Interest Form, the captain needs every team member\'s and parent\'s email, plus the name and address of each member\'s school. ' +
+            'From now on the team captain sends questions to the SRC/IRB and copies the teammate and all parents. ' +
+            'Not asked yet: AI use rules.';
+        }
+      }
+      var t2 = seedTask(s, 't2');
+      if (t2 && t2.desc === SEED_TASKS[1][4]) {
+        t2.desc = 'SRC/IRB confirmed teams from different Alameda County schools are allowed. Still find out if a school fair is a required step before ACSEF.';
+      }
+      var t3 = seedTask(s, 't3');
+      if (t3 && t3.title === SEED_TASKS[2][3]) {
+        t3.title = 'Collect team info for the Interest Form: emails and schools';
+        t3.desc = 'Email for each student and each parent, plus the name and address of each student\'s school. Needed before opening the Interest Form.';
+      }
+      addSeedTask(s, 's2-1', 'p0', 'Both', '11-25', 'Add src.irb.acsef@gmail.com and NoReply@zfairs.com to contacts',
+        'Both students and both parents. Check inbox and spam for messages from these two addresses until the fair.');
+      addSeedTask(s, 's2-2', 'p0', 'Captain', '11-25', 'Optional: ask the SRC/IRB about AI use rules',
+        'The first email did not ask about AI use. If anything is unclear, the captain emails src.irb.acsef@gmail.com and copies the teammate and both parents.');
+      addSeedTask(s, 's2-3', 'p1', 'Captain', '11-28', 'Check whether the ML/AI Computation addendum is needed',
+        'The SRC/IRB said it may be required in addition to the Engineering Addendum. If unsure, the captain asks the SRC/IRB (copying everyone).');
+      addSeedTask(s, 's2-4', 'p1', 'Both', '11-29', 'Agree on the Interest Form answers together',
+        'Draft the answers together before the captain fills in the Google Interest Form.');
+    }
+  };
+  function applySeedUpdates(s) {
+    var v = typeof s.seedVersion === 'number' ? s.seedVersion : 1;
+    for (var n = v + 1; n <= SEED_VERSION; n++) if (SEED_UPDATES[n]) SEED_UPDATES[n](s);
+    s.seedVersion = Math.max(v, SEED_VERSION);
+    return s;
+  }
+
   function defaultState() {
+    return applySeedUpdates(baseState());
+  }
+  function baseState() {
     return {
       app: 'acsef2027-tracker',
       version: 1,
+      seedVersion: 1,
       phases: SEED_PHASES.map(function (p) { return { id: p.id, name: p.name, range: p.range }; }),
       tasks: SEED_TASKS.map(function (r, i) {
         var t = { id: 't' + (i + 1), phase: r[0], owner: r[1], due: seedYear(r[2]), title: r[3], desc: r[4],
@@ -669,6 +749,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
       }),
       keyDates: SEED_DATES.map(function (d) { return { date: d.date, time: d.time || '', title: d.title, kind: d.kind }; }),
       aiLog: [], expLog: [], parts: [],
+      team: normTeam(null),
       ui: { collapsed: {}, filters: { owner: 'all', status: 'all', openOnly: false }, rulesOpen: true }
     };
   }
@@ -697,6 +778,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
         return { date: k.date, time: String(k.time || ''), title: String(k.title || ''), kind: KIND_LABEL[k.kind] ? k.kind : 'deadline' };
       }) : d.keyDates,
       aiLog: normRows(s.aiLog), expLog: normRows(s.expLog), parts: normRows(s.parts),
+      team: normTeam(s.team),
       ui: d.ui
     };
     if (s.ui && typeof s.ui === 'object') {
@@ -714,7 +796,13 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
     // Tasks whose phase no longer exists go to the last phase so they are never invisible.
     var ids = out.phases.map(function (p) { return p.id; });
     out.tasks.forEach(function (t) { if (ids.indexOf(t.phase) < 0) t.phase = ids[ids.length - 1]; });
-    return out;
+    out.seedVersion = typeof s.seedVersion === 'number' ? s.seedVersion : 1;
+    return applySeedUpdates(out);
+  }
+  function normTeam(t) {
+    var o = {};
+    TEAM_KEYS.forEach(function (k) { o[k] = t && typeof t[k] === 'string' ? t[k].trim().slice(0, 30) : ''; });
+    return o;
   }
   function normRows(a) {
     if (!Array.isArray(a)) return [];
@@ -767,6 +855,63 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
   function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(2); }
   function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
 
+  /* ----- Team names ----- */
+  function teamName(k) { return (state.team && state.team[k]) || ''; }
+  /** Display name for an owner role. long=true adds the role, for menus. */
+  function ownerLabel(o, long) {
+    var c = teamName('captain'), m = teamName('teammate'), pa = teamName('captainParent'), pb = teamName('teammateParent');
+    switch (o) {
+      case 'Captain': return c ? (long ? c + ' (Captain)' : c) : 'Captain';
+      case 'Teammate': return m ? (long ? m + ' (Teammate)' : m) : 'Teammate';
+      case 'Both': return long ? 'Both students' : 'Both';
+      case 'Parent': return 'Either parent';
+      case 'ParentA': return pa ? (long ? pa + ' (parent)' : pa) : "Captain's parent";
+      case 'ParentB': return pb ? (long ? pb + ' (parent)' : pb) : "Teammate's parent";
+      default: return o || '';
+    }
+  }
+  function ownerClass(o) { return 'o-' + (/^Parent/.test(o) ? 'Parent' : o); }
+  function ownerOptions(list, selected, long) {
+    return list.map(function (o) {
+      return '<option value="' + esc(o) + '"' + (o === selected ? ' selected' : '') + '>' + esc(ownerLabel(o, long)) + '</option>';
+    }).join('');
+  }
+  function renderOwnerFilter() {
+    var opts = [
+      ['all', 'Everyone'],
+      ['Captain', ownerLabel('Captain') + ' (+ Both)'],
+      ['Teammate', ownerLabel('Teammate') + ' (+ Both)'],
+      ['Both', 'Both only'],
+      ['Parent', 'All parent tasks'],
+      ['ParentA', ownerLabel('ParentA') + ' (+ either parent)'],
+      ['ParentB', ownerLabel('ParentB') + ' (+ either parent)']
+    ];
+    $('#fOwner').innerHTML = opts.map(function (p) { return '<option value="' + p[0] + '">' + esc(p[1]) + '</option>'; }).join('');
+  }
+  function renderTeamStrip() {
+    var t = state.team, any = TEAM_KEYS.some(function (k) { return t[k]; });
+    var el = $('#teamStrip');
+    if (!any) {
+      el.innerHTML = '<span class="lbl2">Team</span><span class="muted">Add the students\' and parents\' first names so tasks show who does what.</span>' +
+        '<span class="grow"></span><button type="button" class="btn small primary" id="btnTeam">Add names</button>';
+      return;
+    }
+    function who(role, sub) { return '<span class="who"><span class="chip ' + ownerClass(role) + '">' + esc(ownerLabel(role)) + '</span><span class="muted">' + sub + '</span></span>'; }
+    el.innerHTML = '<span class="lbl2">Team</span>' + who('Captain', 'Captain, 8th') + who('Teammate', 'Teammate, 6th') +
+      who('ParentA', ownerLabel('Captain') + '\'s parent') + who('ParentB', ownerLabel('Teammate') + '\'s parent') +
+      '<span class="grow"></span><button type="button" class="btn small ghost" id="btnTeam">Edit names</button>';
+  }
+  function openTeamDialog() {
+    $('#tnCaptain').value = teamName('captain');
+    $('#tnTeammate').value = teamName('teammate');
+    $('#tnCaptainParent').value = teamName('captainParent');
+    $('#tnTeammateParent').value = teamName('teammateParent');
+    var d = $('#teamDlg');
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+    $('#tnCaptain').focus();
+  }
+  function closeTeamDialog() { var d = $('#teamDlg'); if (d.close) d.close(); else d.removeAttribute('open'); }
+
   /** Due date that counts for "this week"/"overdue". Weekly tasks point at the next Sunday in their window. */
   function effDue(t) {
     if (!t.due) return '';
@@ -784,6 +929,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
   function byDate(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }
 
   function renderDashboard() {
+    renderTeamStrip();
     // Countdown
     var dates = state.keyDates.slice().sort(byDate);
     var upcoming = dates.filter(function (d) { return d.date >= TODAY; });
@@ -852,7 +998,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
   function dItem(t, when, rel) {
     return '<li><button type="button" data-jump="' + esc(t.id) + '"><span class="t">' + esc(t.title) + '</span>' +
       '<span class="d">' + esc(rel) + '</span>' +
-      '<span class="m">' + esc(t.owner) + ' · ' + esc(when) + ' · ' + esc(phaseName(t.phase).replace(/:.*/, '')) + '</span></button></li>';
+      '<span class="m">' + esc(ownerLabel(t.owner)) + ' · ' + esc(when) + ' · ' + esc(phaseName(t.phase).replace(/:.*/, '')) + '</span></button></li>';
   }
 
   /* ================= Tasks ================= */
@@ -861,8 +1007,12 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
     if (f.openOnly && isDone(t)) return false;
     if (f.status !== 'all' && t.status !== f.status) return false;
     if (f.owner !== 'all') {
-      if (f.owner === 'Captain' || f.owner === 'Teammate') { if (t.owner !== f.owner && t.owner !== 'Both') return false; }
-      else if (t.owner !== f.owner) return false;
+      var o = t.owner, ok;
+      if (f.owner === 'Captain' || f.owner === 'Teammate') ok = o === f.owner || o === 'Both';
+      else if (f.owner === 'Parent') ok = /^Parent/.test(o);
+      else if (f.owner === 'ParentA' || f.owner === 'ParentB') ok = o === f.owner || o === 'Parent';
+      else ok = o === f.owner;
+      if (!ok) return false;
     }
     return true;
   }
@@ -899,7 +1049,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
 
   function taskHTML(t) {
     var open = !!expanded[t.id], over = isOverdue(t), done = isDone(t), due = effDue(t);
-    var chips = '<span class="chip o-' + esc(t.owner) + '">' + esc(t.owner) + '</span>';
+    var chips = '<span class="chip ' + ownerClass(t.owner) + '">' + esc(ownerLabel(t.owner)) + '</span>';
     if (done) {
       chips += '<span class="chip donedate">Done' + (t.completedAt ? ' ' + fmt(t.completedAt) : '') + '</span>';
     } else if (due) {
@@ -921,7 +1071,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
       h += '<div class="task-edit">' +
         '<label class="field full">Title<input type="text" data-field="title" value="' + esc(t.title) + '"></label>' +
         '<label class="field full">Short description<textarea data-field="desc" rows="2">' + esc(t.desc) + '</textarea></label>' +
-        '<label class="field">Owner<select data-field="owner">' + OWNERS.map(function (o) { return '<option' + (o === t.owner ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>' +
+        '<label class="field">Owner<select data-field="owner">' + ownerOptions(OWNERS, t.owner, true) + '</select></label>' +
         '<label class="field">Status<select data-field="status">' + STATUSES.map(function (s) { return '<option' + (s === t.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></label>' +
         '<label class="field">' + (t.repeat === 'weekly' ? 'Repeat until' : 'Due date') + '<input type="date" data-field="due" value="' + esc(t.due) + '"></label>' +
         '<label class="toggle" style="align-self:end"><input type="checkbox" data-field="repeat"' + (t.repeat === 'weekly' ? ' checked' : '') + '> Every Sunday</label>' +
@@ -1072,7 +1222,10 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
       case 'textarea': return '<textarea rows="2"' + a + '>' + esc(v) + '</textarea>';
       case 'select':
         var opts = c.options.slice(); if (v && opts.indexOf(v) < 0) opts.push(v);
-        return '<select' + a + '>' + opts.map(function (o) { return '<option value="' + esc(o) + '"' + (o === (v || '') ? ' selected' : '') + '>' + (o ? esc(o) : '—') + '</option>'; }).join('') + '</select>';
+        return '<select' + a + '>' + opts.map(function (o) {
+          var label = !o ? '—' : c.roles ? ownerLabel(o) : o;
+          return '<option value="' + esc(o) + '"' + (o === (v || '') ? ' selected' : '') + '>' + esc(label) + '</option>';
+        }).join('') + '</select>';
       case 'checkbox': return '<input type="checkbox"' + a + (v ? ' checked' : '') + '>';
       case 'money': return '<span data-line>' + money(num(r.qty) * num(r.cost)) + '</span>';
       default:
@@ -1168,15 +1321,21 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
     return {
       url: String(s.url || ''), passcode: String(s.passcode || ''), who: String(s.who || ''),
       rev: typeof s.rev === 'number' ? s.rev : -1,
-      pending: fixSet(s.pending), removed: fixSet(s.removed), lastSync: String(s.lastSync || '')
+      pending: fixSet(s.pending), removed: fixSet(s.removed), teamDirty: !!s.teamDirty, lastSync: String(s.lastSync || '')
     };
   }
   function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) { /* device copy still works */ } }
   function syncOn() { return !!(sync.url && sync.passcode); }
   function hasPending() {
-    return COLLS.some(function (c) { return Object.keys(sync.pending[c]).length > 0 || Object.keys(sync.removed[c]).length > 0; });
+    return sync.teamDirty || COLLS.some(function (c) { return Object.keys(sync.pending[c]).length > 0 || Object.keys(sync.removed[c]).length > 0; });
   }
-  function clearPending() { sync.pending = blankSet(); sync.removed = blankSet(); }
+  function clearPending() { sync.pending = blankSet(); sync.removed = blankSet(); sync.teamDirty = false; }
+  function teamChanged() {
+    editSeq++;
+    if (!syncOn()) return;
+    sync.teamDirty = true;
+    saveSync();
+  }
   function changed(coll, id) {
     editSeq++;
     if (!syncOn()) return;
@@ -1192,14 +1351,15 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
     saveSync();
   }
   function sharedPart(s) {
-    return { app: s.app, version: s.version, phases: s.phases, tasks: s.tasks, keyDates: s.keyDates,
-      aiLog: s.aiLog, expLog: s.expLog, parts: s.parts };
+    return { app: s.app, version: s.version, seedVersion: s.seedVersion, phases: s.phases, tasks: s.tasks, keyDates: s.keyDates,
+      aiLog: s.aiLog, expLog: s.expLog, parts: s.parts, team: s.team };
   }
 
   /** Team copy + this device's unsent changes on top. */
   function mergeRemote(remote) {
     var local = state, next = normalize(remote);
     next.ui = local.ui;
+    if (sync.teamDirty) next.team = local.team;
     COLLS.forEach(function (c) {
       Object.keys(sync.removed[c]).forEach(function (id) {
         next[c] = next[c].filter(function (r) { return r.id !== id; });
@@ -1290,7 +1450,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
     inFlight = true;
     setSync('saving');
     var seq = editSeq;
-    return api({ action: 'put', baseRevision: sync.rev, force: !!force, by: sync.who, state: sharedPart(state) }).then(function (res) {
+    return api({ action: 'put', baseRevision: sync.rev, force: !!force, by: sync.who ? ownerLabel(sync.who) : '', state: sharedPart(state) }).then(function (res) {
       inFlight = false;
       if (res.ok) {
         sync.rev = res.revision;
@@ -1360,7 +1520,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
   function openSyncDialog() {
     $('#syncUrl').value = sync.url || DEFAULT_SYNC_URL;
     $('#syncPass').value = sync.passcode;
-    $('#syncWho').value = sync.who;
+    $('#syncWho').innerHTML = '<option value="">Choose…</option>' + ownerOptions(['Captain', 'Teammate', 'ParentA', 'ParentB'], sync.who, true);
     $('#syncOff').hidden = !syncOn();
     $('#syncGo').textContent = syncOn() ? 'Save & sync now' : 'Connect';
     var st = $('#btnSync').getAttribute('data-s');
@@ -1457,6 +1617,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
 
   /* ================= Wiring ================= */
   function renderAll() {
+    renderOwnerFilter();
     syncFilters();
     $('#rules').open = state.ui.rulesOpen;
     renderDashboard();
@@ -1513,6 +1674,21 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:var(--muted);fon
         (syncOn() ? '\n\nTeam sync is on, so this also erases the team copy in the Google Sheet for everyone.' : '') +
         '\n\nTip: click Export first to keep a backup.')) return;
       state = defaultState(); expanded = {}; persist(); replaceTeamCopy(); renderAll();
+    });
+
+    // Team names
+    $('#teamStrip').addEventListener('click', function (e) { if (e.target.closest('#btnTeam')) openTeamDialog(); });
+    $('#teamClose').addEventListener('click', closeTeamDialog);
+    $('#teamForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      state.team = normTeam({
+        captain: $('#tnCaptain').value, teammate: $('#tnTeammate').value,
+        captainParent: $('#tnCaptainParent').value, teammateParent: $('#tnTeammateParent').value
+      });
+      teamChanged();
+      save();
+      closeTeamDialog();
+      renderAll();
     });
 
     // Sync wiring

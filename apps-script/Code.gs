@@ -121,24 +121,39 @@ function writeState_(ss, rev, text, by) {
 
 /* ---------- Readable tabs (rewritten on every save; edits there are not read back) ---------- */
 
+/** Owner role key -> display name, using the team names saved in the tracker. */
+function ownerLabel_(team, o) {
+  team = team || {};
+  const names = {
+    Captain: team.captain || 'Captain',
+    Teammate: team.teammate || 'Teammate',
+    Both: 'Both',
+    Parent: 'Either parent',
+    ParentA: team.captainParent || "Captain's parent",
+    ParentB: team.teammateParent || "Teammate's parent"
+  };
+  return names[o] || o || '';
+}
+
 function writeViews_(ss, state) {
   const phaseName = {};
   (state.phases || []).forEach(function (p) { phaseName[p.id] = p.name; });
+  const who = function (o) { return ownerLabel_(state.team, o); };
 
   writeTable_(ss, 'Tasks',
     ['Phase', 'Task', 'Description', 'Owner', 'Due', 'Status', 'Completed', 'Notes'],
     (state.tasks || []).map(function (t) {
-      return [phaseName[t.phase] || '', t.title, t.desc, t.owner, t.due, t.status, t.completedAt, t.notes];
+      return [phaseName[t.phase] || '', t.title, t.desc, who(t.owner), t.due, t.status, t.completedAt, t.notes];
     }));
 
   writeTable_(ss, 'AI Use Log',
     ['Date', 'Student', 'Tool', 'Prompt / question', 'What it helped with', 'How it was cited'],
-    (state.aiLog || []).map(function (r) { return [r.date, r.student, r.tool, r.prompt, r.purpose, r.citation]; }));
+    (state.aiLog || []).map(function (r) { return [r.date, who(r.student), r.tool, r.prompt, r.purpose, r.citation]; }));
 
   writeTable_(ss, 'Experiment Log',
     ['Date', 'Test', 'Start', 'End', 'Outdoor °F', 'Weather', 'Window / vent / door settings', 'Who ran it', 'Notes'],
     (state.expLog || []).map(function (r) {
-      return [r.date, r.test, r.start, r.end, r.outdoor, r.weather, r.settings, r.ranBy, r.notes];
+      return [r.date, r.test, r.start, r.end, r.outdoor, r.weather, r.settings, who(r.ranBy), r.notes];
     }));
 
   writeTable_(ss, 'Parts',
